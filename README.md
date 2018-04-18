@@ -2,7 +2,7 @@
 A small lib to manipulate object with redis or an in-memory cache
 
 ## How to
-```
+```rust
 use mouscache::{CacheAccess, MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
