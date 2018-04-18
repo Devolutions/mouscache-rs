@@ -2,6 +2,13 @@
 name = "mouscache_derive"
 version = "0.2.0"
 authors = ["Richer Archambault <richer.arc@gmail.com>"]
+description = "A utility crate implement trait to store object either in redis or in memory"
+
+documentation = "https://github.com/wayk/mouscache-rs"
+homepage = "https://github.com/wayk/mouscache-rs"
+repository = "https://github.com/wayk/mouscache-rs"
+keywords = ["cache", "redis"]
+license = "MIT"
 
 [lib]
 proc-macro = true

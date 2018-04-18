@@ -2,6 +2,13 @@
 name = "mouscache"
 version = "0.2.0"
 authors = ["richer <richer.arc@gmail.com>"]
+description = "A crate to store object either in redis or in memory"
+
+documentation = "https://github.com/wayk/mouscache-rs"
+homepage = "https://github.com/wayk/mouscache-rs"
+repository = "https://github.com/wayk/mouscache-rs"
+keywords = ["cache", "redis"]
+license = "MIT"
 
 [dependencies]
 redis = "0.8"

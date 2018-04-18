@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "mouscache",
+    "mouscache_derive",
+    "mouscache_test",
+]

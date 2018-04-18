@@ -2,6 +2,7 @@
 name = "mouscache_test"
 version = "0.2.0"
 authors = ["richer <richer.arc@gmail.com>"]
+publish = false
 
 [dependencies]
 

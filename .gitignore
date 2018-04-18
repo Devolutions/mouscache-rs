@@ -2,6 +2,7 @@
 **/*.rs.bk
 
 */*.lock
+*.lock
 
 .vscode/
 
