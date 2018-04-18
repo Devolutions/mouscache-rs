@@ -1,18 +1,31 @@
-# mouscache-rs
-A small lib to manipulate object with redis or an in-memory cache
-
-## How to
-```
 use mouscache::{CacheAccess, MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
-struct YourData {
+struct DataTestDerive {
     field1: u16,
     field2: String,
 }
 
-fn main() {
-    let data = YourData {
+#[test]
+fn memory_cache_test_derive() {
+    let data = DataTestDerive {
+        field1: 42,
+        field2: String::from("Hello, World!"),
+    };
+
+    let mut cache = MemoryCache::new();
+
+    let _ = cache.insert("test", data.clone());
+
+    let data2: DataTestDerive = cache.get("test").unwrap();
+
+    assert_eq!(data.field1, data2.field1);
+    assert_eq!(data.field2, data2.field2);
+}
+
+#[test]
+fn redis_cache_test_derive() {
+    let data = DataTestDerive {
         field1: 42,
         field2: String::from("Hello, World!"),
     };
@@ -24,7 +37,7 @@ fn main() {
 
         println!("data inserted");
 
-        let data2: YourData = cache.get("test").unwrap();
+        let data2: DataTestDerive = cache.get("test").unwrap();
 
         println!("Data retrived {:?}", data);
 
@@ -32,10 +45,3 @@ fn main() {
         assert_eq!(data.field2, data2.field2);
     }
 }
-```
-
-##TODO
-- [x] Add support for `struct` with named field
-- [ ] Add support for unnamed field
-- [ ] Add support for `enum`
-- [ ] Add support for `union`
