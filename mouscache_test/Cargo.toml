@@ -8,8 +8,5 @@ authors = ["richer <richer.arc@gmail.com>"]
 [dependencies.mouscache]
 path = "../mouscache"
 
-[dependencies.mouscache_redis]
-path = "../mouscache_redis"
-
 [dependencies.mouscache_derive]
 path = "../mouscache_derive"

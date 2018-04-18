@@ -1,9 +1,14 @@
+extern crate redis;
+extern crate dns_lookup;
+
 mod memory_cache;
+mod redis_cache;
 
 use std::any::Any;
 use std::collections::hash_map::HashMap;
 
 pub use memory_cache::MemoryCache;
+pub use redis_cache::RedisCache;
 
 pub enum CacheError {
     InsertionError(String),

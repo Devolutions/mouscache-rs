@@ -113,10 +113,10 @@ fn expand_redis_function(input: &DeriveInput)  -> Result<Tokens, String> {
                 let #ident = if let Some(obj) = #hmap_ident.get(&stringify!(#ident).to_string()) {
                     match obj.parse::<#t>() {
                         Ok(o) => o,
-                        _ => return Err(CacheError::RedisError(String::from(format!("Unable to parse field {} from string into {}", stringify!(#ident), stringify!(#(f.ty)))))),
+                        _ => return Err(CacheError::Other(format!("Unable to parse field {} from string into {}", stringify!(#ident), stringify!(#(f.ty))))),
                     }
                 } else {
-                   return Err(CacheError::RedisError(String::from(format!("Unable to parse field {}", stringify!(#ident)))));
+                   return Err(CacheError::Other(format!("Unable to parse field {}", stringify!(#ident))));
                 };
             });
         }
@@ -149,7 +149,7 @@ fn expand_redis_function(input: &DeriveInput)  -> Result<Tokens, String> {
 
                 #return_token
             }
-            return Err(CacheError::NotConfigured);
+            return Err(CacheError::Other(String::new()));
         }
     })
 }

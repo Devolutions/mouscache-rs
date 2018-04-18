@@ -1,15 +1,12 @@
 extern crate mouscache;
-extern crate mouscache_redis;
 #[macro_use]
 extern crate mouscache_derive;
 
-use std::any::Any;
-use mouscache::*;
-use std::collections::hash_map::HashMap;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::any::Any;
+    use mouscache::{CacheAccess, Cacheable, CacheError, Result, MemoryCache, RedisCache};
+    use std::collections::hash_map::HashMap;
 
     #[derive(Clone, Debug)]
     struct DataTest {
@@ -72,14 +69,14 @@ mod tests {
             field2: String::from("Hello, World!"),
         };
 
-        let mut cache = RedisCache::new("localhost", None);
+        if let Ok(mut cache) = RedisCache::new("localhost", None) {
+            cache.insert("test", data.clone());
 
-        cache.insert("test", data.clone());
+            let data2: DataTest = cache.get("test").unwrap();
 
-        let data2: DataTest = cache.get("test").unwrap();
-
-        assert_eq!(data.field1, data2.field1);
-        assert_eq!(data.field2, data2.field2);
+            assert_eq!(data.field1, data2.field1);
+            assert_eq!(data.field2, data2.field2);
+        }
     }
 
     #[derive(Cacheable, Clone, Debug)]
@@ -114,17 +111,17 @@ mod tests {
 
         println!("Initial data {:?}", data);
 
-        let mut cache = RedisCache::new("localhost", None);
+        if let Ok(mut cache) = RedisCache::new("localhost", None) {
+            cache.insert("test", data.clone());
 
-        cache.insert("test", data.clone());
+            println!("data inserted");
 
-        println!("data inserted");
+            let data2: DataTestDerive = cache.get("test").unwrap();
 
-        let data2: DataTestDerive = cache.get("test").unwrap();
+            println!("Data retrived {:?}", data);
 
-        println!("Data retrived {:?}", data);
-
-        assert_eq!(data.field1, data2.field1);
-        assert_eq!(data.field2, data2.field2);
+            assert_eq!(data.field1, data2.field1);
+            assert_eq!(data.field2, data2.field2);
+        }
     }
 }

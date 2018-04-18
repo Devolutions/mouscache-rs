@@ -1,14 +1,11 @@
-extern crate mouscache;
-extern crate redis;
-extern crate dns_lookup;
-
 use std::net;
 use std::collections::hash_map::HashMap;
-use mouscache::Cache;
-use mouscache::Result;
-use mouscache::CacheError;
-use mouscache::Cacheable;
-use mouscache::CacheAccess;
+use Cache;
+use Result;
+use CacheError;
+use Cacheable;
+use CacheAccess;
+use redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
 
