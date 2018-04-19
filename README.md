@@ -2,8 +2,8 @@
 A small lib to manipulate object with redis or an in-memory cache
 
 ## How to
-```
-use mouscache::RedisCache;
+```rust
+use mouscache::{MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
 struct YourData {
