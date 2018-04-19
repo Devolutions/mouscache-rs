@@ -1,6 +1,7 @@
 extern crate redis;
 extern crate dns_lookup;
 
+mod error;
 mod memory_cache;
 mod redis_cache;
 
@@ -8,13 +9,7 @@ use std::{any::Any, collections::HashMap};
 
 pub use memory_cache::MemoryCache;
 pub use redis_cache::RedisCache;
-
-pub enum CacheError {
-    InsertionError(String),
-    DeletionError(String),
-    AccessError(String),
-    Other(String)
-}
+pub use error::CacheError;
 
 pub type Result<T> = std::result::Result<T, CacheError>;
 
