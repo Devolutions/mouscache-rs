@@ -1,4 +1,4 @@
-use mouscache::{CacheAccess, MemoryCache, RedisCache};
+use mouscache::{MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
 struct DataTestDerive {

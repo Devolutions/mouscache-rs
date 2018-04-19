@@ -4,8 +4,7 @@ extern crate dns_lookup;
 mod memory_cache;
 mod redis_cache;
 
-use std::any::Any;
-use std::collections::hash_map::HashMap;
+use std::{any::Any, collections::HashMap};
 
 pub use memory_cache::MemoryCache;
 pub use redis_cache::RedisCache;
@@ -32,24 +31,32 @@ pub trait CacheAccess {
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()>;
 }
 
-pub struct Cache<T: CacheAccess>(T);
-
-impl<T: CacheAccess> Cache<T> {
-    pub fn new(cache_obj: T) -> Self {
-        Cache(cache_obj)
-    }
+pub enum Cache {
+    Memory(MemoryCache),
+    Redis(RedisCache),
 }
 
-impl<T: CacheAccess> CacheAccess for Cache<T> {
-    fn insert<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K, obj: O) -> Result<()> {
-        self.0.insert(key, obj)
+use Cache::*;
+
+impl Cache {
+    pub fn insert<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K, obj: O) -> Result<()> {
+        match *self {
+            Memory(ref mut c) => c.insert(key, obj),
+            Redis(ref mut c) => c.insert(key, obj),
+        }
     }
 
-    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O> {
-        self.0.get::<K, O>(key)
+    pub fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O> {
+        match *self {
+            Memory(ref mut c) => c.get::<K, O>(key),
+            Redis(ref mut c) => c.get::<K, O>(key),
+        }
     }
 
-    fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
-        self.0.remove::<K, O>(key)
+    pub fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
+        match *self {
+            Memory(ref mut c) => c.remove::<K, O>(key),
+            Redis(ref mut c) => c.remove::<K, O>(key),
+        }
     }
 }

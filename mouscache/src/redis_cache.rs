@@ -1,6 +1,7 @@
 use std::net;
 use std::collections::hash_map::HashMap;
 use Cache;
+use Cache::Redis;
 use Result;
 use CacheError;
 use Cacheable;
@@ -16,7 +17,7 @@ pub struct RedisCache {
 }
 
 impl RedisCache {
-    pub fn new(host: &str, password: Option<&str>) -> Result<Cache<Self>> {
+    pub fn new(host: &str, password: Option<&str>) -> Result<Cache> {
         let host_vec: Vec<&str> = host.split(":").collect();
 
         let ips: Vec<net::IpAddr> = match lookup_host(host_vec[0]) {
@@ -45,7 +46,7 @@ impl RedisCache {
             Err(e) => return Err(CacheError::Other(e.to_string())),
         };
 
-        Ok(Cache::new(RedisCache {
+        Ok(Redis(RedisCache {
             client,
             connection
         }))

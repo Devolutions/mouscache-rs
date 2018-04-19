@@ -1,6 +1,7 @@
 use std::collections::hash_map::HashMap;
 use Result;
 use Cache;
+use Cache::Memory;
 use Cacheable;
 use CacheAccess;
 
@@ -17,8 +18,8 @@ impl Default for MemoryCache {
 }
 
 impl MemoryCache {
-    pub fn new() -> Cache<Self> {
-        Cache::new(MemoryCache::default())
+    pub fn new() -> Cache {
+        Memory(MemoryCache::default())
     }
 
     fn get_type_cache<O: Cacheable>(&mut self) -> &HashMap<String, Box<Cacheable>> {

@@ -5,11 +5,9 @@ extern crate proc_macro2;
 extern crate quote;
 extern crate syn;
 
-use syn::{Ident, Index, Member, DeriveInput};
-use syn::spanned::Spanned;
+use syn::{Ident, DeriveInput};
 use quote::Tokens;
 use proc_macro2::Span;
-use proc_macro::TokenStream;
 
 #[proc_macro_derive(Cacheable)]
 pub fn derive_cacheable(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -1,5 +1,5 @@
 use std::any::Any;
-use mouscache::{CacheAccess, Cacheable, CacheError, Result, MemoryCache, RedisCache};
+use mouscache::{Cacheable, CacheError, Result, MemoryCache, RedisCache};
 use std::collections::hash_map::HashMap;
 
 #[derive(Clone, Debug)]
