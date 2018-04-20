@@ -1,4 +1,5 @@
 use std::net;
+use std::mem::discriminant;
 use std::collections::hash_map::HashMap;
 use Cache;
 use Cache::Redis;
@@ -25,34 +26,40 @@ impl RedisCache {
             Err(e) => return Err(CacheError::Other(e.to_string())),
         };
 
-        let ip_host = if host_vec.len() > 1 {
-            format!("{}:{}", ips[0].to_string(), host_vec[1])
-        } else {
-            ips[0].to_string()
-        };
+        if let Some((_, ip_v4)) = ips.iter()
+            .enumerate()
+            .find(|&(_index, ip)| {
+                discriminant(ip) == discriminant(&net::IpAddr::V4(net::Ipv4Addr::new(0,0,0,0)))
+            }) {
 
-        let url = match password {
-            Some(p) => format!("redis://:{}@{}", p, ip_host),
-            None => format!("redis://{}", ip_host),
-        };
+            let ip_host = if host_vec.len() > 1 {
+                format!("{}:{}", ip_v4.to_string(), host_vec[1])
+            } else {
+                ip_v4.to_string()
+            };
 
-        let client = match redis::Client::open(url.as_str()) {
-            Ok(c) => c,
-            Err(e) => return Err(CacheError::Other(e.to_string())),
-        };
+            let url = match password {
+                Some(p) => format!("redis://:{}@{}", p, ip_host),
+                None => format!("redis://{}", ip_host),
+            };
 
-        let connection = match client.get_connection() {
-            Ok(c) => c,
-            Err(e) => return Err(CacheError::Other(e.to_string())),
-        };
+            let client = match redis::Client::open(url.as_str()) {
+                Ok(c) => c,
+                Err(e) => return Err(CacheError::Other(e.to_string())),
+            };
 
-        Ok(Redis(RedisCache {
-            client,
-            connection
-        }))
+            let connection = match client.get_connection() {
+                Ok(c) => c,
+                Err(e) => return Err(CacheError::Other(e.to_string())),
+            };
 
+            return Ok(Redis(RedisCache {
+                client,
+                connection
+            }));
+        }
 
-
+        Err(CacheError::Other(format!("Could'n find any valid IP for host {} ", host)))
     }
 }
 

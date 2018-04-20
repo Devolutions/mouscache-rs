@@ -4,6 +4,7 @@ use mouscache::{MemoryCache, RedisCache};
 struct DataTestDerive {
     field1: u16,
     field2: String,
+    field_uuid: String
 }
 
 #[test]
@@ -11,6 +12,7 @@ fn memory_cache_test_derive() {
     let data = DataTestDerive {
         field1: 42,
         field2: String::from("Hello, World!"),
+        field_uuid: String::from("a2f5c0d6-6191-4172-81c9-c3531df19407"),
     };
 
     let mut cache = MemoryCache::new();
@@ -28,6 +30,7 @@ fn redis_cache_test_derive() {
     let data = DataTestDerive {
         field1: 42,
         field2: String::from("Hello, World!"),
+        field_uuid: String::from("a2f5c0d6-6191-4172-81c9-c3531df19407"),
     };
 
     println!("Initial data {:?}", data);
