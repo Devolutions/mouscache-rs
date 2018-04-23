@@ -1,7 +1,7 @@
 # mouscache-rs
 A small lib to manipulate object with redis or an in-memory cache
 
-## How to
+## Basic Usage
 ```rust
 use mouscache::{MemoryCache, RedisCache};
 
@@ -34,8 +34,35 @@ fn main() {
 }
 ```
 
+## Customizing What's Being Cached
+Mouscache now support 2 custom attribute to customize entry :
+
+### `expires` Attribute
+Specifies a duration in sec after which the entry is invalid
+```rust
+use mouscache::{MemoryCache, RedisCache};
+
+#[derive(Cacheable, Clone, Debug)]
+#[cache(expires="10")] // each entry of type YouCustomDataType will be valid 10 sec.
+struct YouCustomDataType {
+    yourPrecious_field: String
+}
+```
+
+### `rename` Attribute
+Specifies the which will be used to isert the entry
+```rust
+use mouscache::{MemoryCache, RedisCache};
+
+#[derive(Cacheable, Clone, Debug)]
+#[cache(rename="ThisNameIsCooler")] // each entry of type YouCustomDataType will be inserted with ThisNameIsCooler
+struct YouCustomDataType {
+    yourPrecious_field: String
+}
+```
+
 ##TODO
 - [x] Add support for `struct` with named field
+- [x] Add Data Attribute
 - [ ] Add support for unnamed field
 - [ ] Add support for `enum`
-- [ ] Add support for `union`
