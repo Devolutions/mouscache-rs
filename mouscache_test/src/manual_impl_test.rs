@@ -37,6 +37,10 @@ impl Cacheable for DataTest {
     fn as_any(&self) -> &Any {
         self
     }
+
+    fn expires_after(&self) -> Option<usize> {
+        None
+    }
 }
 
 #[test]

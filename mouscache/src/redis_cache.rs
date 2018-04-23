@@ -67,7 +67,11 @@ impl CacheAccess for RedisCache {
     fn insert<K: ToString, O: Cacheable + 'static>(&mut self, key: K, obj: O) -> Result<()> {
         let redis_key = redis_key_create::<K, O>(key);
         let data = obj.to_redis_obj();
-        redis_hash_set_multiple(&self.connection, redis_key, &data)
+        if let Some(ttl) = obj.expires_after() {
+            redis_hash_set_multiple_with_expire(&self.connection, redis_key, &data, ttl)
+        } else {
+            redis_hash_set_multiple(&self.connection, redis_key, &data)
+        }
     }
 
     fn get<K: ToString, O: Cacheable + 'static>(&mut self, key: K) -> Option<O> {
@@ -94,6 +98,17 @@ fn redis_key_create<K: ToString, O: Cacheable>(key: K) -> String {
     redis_key.push_str(":");
     redis_key.push_str(key.to_string().as_str());
     redis_key
+}
+
+fn redis_hash_set_multiple_with_expire<F: redis::ToRedisArgs, V: redis::ToRedisArgs>(con: &redis::Connection, key: String, v: &[(F, V)], ttl_sec: usize) -> Result<()> {
+    if let Ok(_) = redis_hash_set_multiple(con, key.clone(), v) {
+        match con.expire(key, ttl_sec) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(CacheError::InsertionError(e.to_string())),
+        }
+    } else {
+        Err(CacheError::InsertionError(String::new()))
+    }
 }
 
 fn redis_hash_set_multiple<F: redis::ToRedisArgs, V: redis::ToRedisArgs>(con: &redis::Connection, key: String, v: &[(F, V)]) -> Result<()> {

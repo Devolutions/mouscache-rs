@@ -1,3 +1,4 @@
+use std;
 use mouscache::{MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
@@ -46,5 +47,36 @@ fn redis_cache_test_derive() {
 
         assert_eq!(data.field1, data2.field1);
         assert_eq!(data.field2, data2.field2);
+    }
+}
+
+#[derive(Cacheable, Clone, Debug)]
+#[cache(expires="1")]
+struct DataTestExpires {
+    field_temp: String,
+}
+
+#[test]
+fn redis_cache_test_derive_expires() {
+    let data = DataTestExpires {
+        field_temp: String::from("Hello, World!"),
+    };
+
+    println!("Initial data {:?}", data);
+
+    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+        let _ = cache.insert("exp", data.clone());
+
+        println!("data inserted");
+
+        if let Some(data2) = cache.get::<&str, DataTestExpires>("exp") {
+            assert_eq!(data.field_temp, data2.field_temp);
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        if let Some(_) = cache.get::<&str, DataTestExpires>("exp") {
+            assert!(false);
+        }
     }
 }

@@ -14,10 +14,10 @@ license = "MIT"
 proc-macro = true
 
 [dependencies]
-quote = "0.4"
-proc-macro2 = "0.2"
+quote = "0.5"
+proc-macro2 = "0.3"
 
 
 [dependencies.syn]
-version = "0.12"
+version = "0.13"
 features = ["derive"]

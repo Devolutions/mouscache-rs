@@ -17,6 +17,7 @@ pub trait Cacheable {
     fn model_name() -> &'static str where Self: Sized;
     fn to_redis_obj(&self) -> Vec<(String, String)>;
     fn from_redis_obj(obj: HashMap<String, String>) -> Result<Self> where Self: Sized;
+    fn expires_after(&self) -> Option<usize>;
     fn as_any(&self) -> &Any;
 }
 
