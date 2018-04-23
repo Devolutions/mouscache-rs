@@ -50,7 +50,7 @@ struct YouCustomDataType {
 ```
 
 ### `rename` Attribute
-Specifies the which will be used to isert the entry
+Specifies the name which will be used to insert the entry
 ```rust
 use mouscache::{MemoryCache, RedisCache};
 
