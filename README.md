@@ -17,16 +17,10 @@ fn main() {
         field2: String::from("Hello, World!"),
     };
 
-    println!("Initial data {:?}", data);
-
     if let Ok(mut cache) = RedisCache::new("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
-        println!("data inserted");
-
         let data2: YourData = cache.get("test").unwrap();
-
-        println!("Data retrived {:?}", data);
 
         assert_eq!(data.field1, data2.field1);
         assert_eq!(data.field2, data2.field2);
