@@ -1,4 +1,6 @@
 # mouscache-rs
+[![Mouscache doc badge](https://docs.rs/mouscache/badge.svg)](https://docs.rs/mouscache/)
+
 A small lib to manipulate object with redis or an in-memory cache
 
 ## Basic Usage

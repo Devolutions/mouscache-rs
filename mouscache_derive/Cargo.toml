@@ -1,10 +1,10 @@
 [package]
 name = "mouscache_derive"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Richer Archambault <richer.arc@gmail.com>"]
 description = "A utility crate implement trait to store object either in redis or in memory"
 
-documentation = "https://github.com/wayk/mouscache-rs"
+documentation = "https://docs.rs/mouscache_derive"
 homepage = "https://github.com/wayk/mouscache-rs"
 repository = "https://github.com/wayk/mouscache-rs"
 keywords = ["cache", "redis"]
