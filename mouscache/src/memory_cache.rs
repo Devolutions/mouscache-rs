@@ -73,7 +73,7 @@ impl CacheAccess for MemoryCache {
         Ok(())
     }
 
-    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O> {
+    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<Option<O>> {
         let c = self.get_type_cache_mut::<O>();
 
         let mut delete_entry = false;
@@ -89,7 +89,7 @@ impl CacheAccess for MemoryCache {
                     None => panic!("Invalid type in mouscache")
                 };
 
-                return Some(struct_obj);
+                return Ok(Some(struct_obj));
             }
         }
 
@@ -97,7 +97,7 @@ impl CacheAccess for MemoryCache {
             c.remove(&key.to_string());
         }
 
-        None
+        Ok(None)
     }
 
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {

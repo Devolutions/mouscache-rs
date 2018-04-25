@@ -1,3 +1,5 @@
+extern crate r2d2;
+extern crate r2d2_redis;
 extern crate redis;
 extern crate dns_lookup;
 
@@ -23,7 +25,7 @@ pub trait Cacheable {
 
 pub trait CacheAccess {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K, obj: O) -> Result<()>;
-    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O>;
+    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<Option<O>>;
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()>;
 }
 
@@ -42,7 +44,7 @@ impl Cache {
         }
     }
 
-    pub fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O> {
+    pub fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<Option<O>> {
         match *self {
             Memory(ref mut c) => c.get::<K, O>(key),
             Redis(ref mut c) => c.get::<K, O>(key),
