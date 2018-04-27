@@ -5,6 +5,8 @@ use Cache;
 use Cache::Memory;
 use Cacheable;
 use CacheAccess;
+use std::sync::RwLock;
+use std::sync::Arc;
 
 struct Expiration {
     insertion_time: Instant,
@@ -25,84 +27,91 @@ impl Expiration {
     }
 }
 
-pub struct MemoryCache {
-    cache: HashMap<String, HashMap<String, (Box<Cacheable>, Option<Expiration>)>>
+type MemCacheable = (Box<Cacheable>, Option<Expiration>);
+
+struct Inner {
+    pub cache: RwLock<HashMap<String, MemCacheable>>
 }
 
-impl Default for MemoryCache {
-    fn default() -> Self {
+impl Inner {
+    pub fn new() -> Self {
+        Inner {
+            cache: RwLock::new(HashMap::new())
+        }
+    }
+}
+
+pub struct MemoryCache {
+    inner: Arc<Inner>
+}
+
+impl Clone for MemoryCache {
+    fn clone(&self) -> Self {
         MemoryCache {
-            cache: HashMap::new(),
+            inner: self.inner.clone(),
         }
     }
 }
 
 impl MemoryCache {
     pub fn new() -> Cache {
-        Memory(MemoryCache::default())
-    }
-
-    fn _get_type_cache<O: Cacheable>(&mut self) -> &HashMap<String, (Box<Cacheable>, Option<Expiration>)> {
-        let model_name = O::model_name().to_string();
-        if !self.cache.contains_key(&model_name) {
-            let c: HashMap<String, (Box<Cacheable>, Option<Expiration>)> = HashMap::new();
-            self.cache.insert(model_name.clone(), c);
-        }
-
-        return &self.cache.get(&model_name).unwrap();
-    }
-
-    fn get_type_cache_mut<O: Cacheable>(&mut self) -> &mut HashMap<String, (Box<Cacheable>, Option<Expiration>)> {
-        let model_name = O::model_name().to_string();
-        if !self.cache.contains_key(&model_name) {
-            let c: HashMap<String, (Box<Cacheable>, Option<Expiration>)> = HashMap::new();
-            self.cache.insert(model_name.clone(), c);
-        }
-
-        return self.cache.get_mut(&model_name).unwrap();
+        Memory(MemoryCache {
+            inner: Arc::new(Inner::new())
+        })
     }
 }
 
 impl CacheAccess for MemoryCache {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K, obj: O) -> Result<()> {
-        let c = self.get_type_cache_mut::<O>();
+        let tkey = gen_key::<K, O>(key);
 
         let exp = obj.expires_after().map(|ttl| {Expiration::new(ttl)});
 
-        c.insert(key.to_string(), (Box::new(obj), exp));
+        self.inner.cache.write().unwrap().insert(tkey, (Box::new(obj), exp));
         Ok(())
     }
 
-    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Option<O> {
-        let c = self.get_type_cache_mut::<O>();
+    fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<Option<O>> {
+        let tkey = gen_key::<K, O>(key);
 
         let mut delete_entry = false;
 
-        if let Some(&(ref obj, ref exp)) = c.get(&key.to_string()) {
-            if let &Some(ref exp) = exp {
-                if exp.is_expired() {
-                    delete_entry = true;
-                }
-            } else {
-                let struct_obj: O = match obj.as_any().downcast_ref::<O>() {
-                    Some(struct_obj) => struct_obj.clone(),
-                    None => panic!("Invalid type in mouscache")
-                };
+        {
+            let cache = self.inner.cache.read().unwrap();
+            if let Some(&(ref obj, ref exp)) = cache.get(&tkey) {
+                if let &Some(ref exp) = exp {
+                    if exp.is_expired() {
+                        delete_entry = true;
+                    }
+                } else {
+                    let struct_obj: O = match obj.as_any().downcast_ref::<O>() {
+                        Some(struct_obj) => struct_obj.clone(),
+                        None => panic!("Invalid type in mouscache")
+                    };
 
-                return Some(struct_obj);
+                    return Ok(Some(struct_obj));
+                }
             }
         }
 
         if delete_entry {
-            c.remove(&key.to_string());
+            let mut cache = self.inner.cache.write().unwrap();
+            cache.remove(&tkey);
         }
 
-        None
+        Ok(None)
     }
 
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
-        let c = self.get_type_cache_mut::<O>();
-        c.remove(&key.to_string());
+        let tkey = gen_key::<K, O>(key);
+        self.inner.cache.write().unwrap().remove(&tkey);
         Ok(())
     }
+}
+
+fn gen_key<K: ToString, O: Cacheable>(key: K) -> String {
+    let mut new_key = String::from(O::model_name());
+    new_key.push_str(":");
+    new_key.push_str(key.to_string().as_str());
+    new_key
 }

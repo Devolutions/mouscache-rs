@@ -11,10 +11,20 @@ use redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
 
+use r2d2::Pool;
+use r2d2_redis::RedisConnectionManager;
+
 #[allow(dead_code)]
 pub struct RedisCache {
-    client: redis::Client,
-    connection: redis::Connection,
+    connection_pool: Pool<RedisConnectionManager>,
+}
+
+impl Clone for RedisCache {
+    fn clone(&self) -> Self {
+        RedisCache {
+            connection_pool: self.connection_pool.clone()
+        }
+    }
 }
 
 impl RedisCache {
@@ -43,19 +53,18 @@ impl RedisCache {
                 None => format!("redis://{}", ip_host),
             };
 
-            let client = match redis::Client::open(url.as_str()) {
-                Ok(c) => c,
+            let manager = match RedisConnectionManager::new(url.as_str()) {
+                Ok(m) => m,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
 
-            let connection = match client.get_connection() {
-                Ok(c) => c,
+            let connection_pool = match Pool::builder().build(manager) {
+                Ok(cp) => cp,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
 
             return Ok(Redis(RedisCache {
-                client,
-                connection
+                connection_pool,
             }));
         }
 
@@ -65,31 +74,46 @@ impl RedisCache {
 
 impl CacheAccess for RedisCache {
     fn insert<K: ToString, O: Cacheable + 'static>(&mut self, key: K, obj: O) -> Result<()> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
         let redis_key = redis_key_create::<K, O>(key);
         let data = obj.to_redis_obj();
         if let Some(ttl) = obj.expires_after() {
-            redis_hash_set_multiple_with_expire(&self.connection, redis_key, &data, ttl)
+            redis_hash_set_multiple_with_expire(&connection, redis_key, &data, ttl)
         } else {
-            redis_hash_set_multiple(&self.connection, redis_key, &data)
+            redis_hash_set_multiple(&connection, redis_key, &data)
         }
     }
 
-    fn get<K: ToString, O: Cacheable + 'static>(&mut self, key: K) -> Option<O> {
+    fn get<K: ToString, O: Cacheable + 'static>(&mut self, key: K) -> Result<Option<O>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
         let redis_key = redis_key_create::<K, O>(key);
-        if let Ok(val) = redis_hash_get_all(&self.connection, redis_key) {
+        if let Ok(val) = redis_hash_get_all(&connection, redis_key) {
             if let Ok(c) = O::from_redis_obj(val) {
-                Some(c)
+                Ok(Some(c))
             } else {
-                None
+                Ok(None)
             }
         } else {
-            None
+            Ok(None)
         }
     }
 
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
         let redis_key = redis_key_create::<K, O>(key);
-        redis_delete(&self.connection, redis_key)
+        redis_delete(&connection, redis_key)
     }
 }
 

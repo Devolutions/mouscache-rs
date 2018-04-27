@@ -54,7 +54,7 @@ fn memory_cache_test() {
 
     let _ = cache.insert("test", data.clone());
 
-    let data2: DataTest = cache.get("test").unwrap();
+    let data2: DataTest = cache.get("test").unwrap().unwrap();
 
     assert_eq!(data.field1, data2.field1);
     assert_eq!(data.field2, data2.field2);
@@ -70,7 +70,7 @@ fn redis_cache_test() {
     if let Ok(mut cache) = RedisCache::new("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
-        let data2: DataTest = cache.get("test").unwrap();
+        let data2: DataTest = cache.get("test").unwrap().unwrap();
 
         assert_eq!(data.field1, data2.field1);
         assert_eq!(data.field2, data2.field2);

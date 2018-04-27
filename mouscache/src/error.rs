@@ -5,6 +5,7 @@ pub enum CacheError {
     InsertionError(String),
     DeletionError(String),
     AccessError(String),
+    ConnectionError(String),
     Other(String),
 }
 
@@ -16,6 +17,7 @@ impl std::fmt::Display for CacheError {
             InsertionError(ref desc) => write!(f, "Insertion error: {}", desc),
             DeletionError(ref desc) => write!(f, "Deletion error: {}", desc),
             AccessError(ref desc) => write!(f, "Access error: {}", desc),
+            ConnectionError(ref desc) => write!(f, "Connection error: {}", desc),
             Other(ref desc) => write!(f, "Unknown error: {}", desc),
         }
     }
@@ -27,6 +29,7 @@ impl std::error::Error for CacheError {
             InsertionError(_) => "Insertion error",
             DeletionError(_) => "Deletion error",
             AccessError(_) => "Access error",
+            ConnectionError(_) => "Connection error",
             Other(_) => "Unknown error",
         }
     }
