@@ -5,6 +5,7 @@ use Result;
 use CacheError;
 use Cacheable;
 use CacheAccess;
+#[cfg(feature = "hashset")]
 use HashSetAccess;
 use redis;
 use redis::Commands;
@@ -72,7 +73,7 @@ impl RedisCache {
 }
 
 impl CacheAccess for RedisCache {
-    fn insert<K: ToString, O: Cacheable + 'static>(&mut self, key: K, obj: O) -> Result<()> {
+    fn insert<K: ToString, O: Cacheable + 'static>(&self, key: K, obj: O) -> Result<()> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -87,7 +88,7 @@ impl CacheAccess for RedisCache {
         }
     }
 
-    fn get<K: ToString, O: Cacheable + 'static>(&mut self, key: K) -> Result<Option<O>> {
+    fn get<K: ToString, O: Cacheable + 'static>(&self, key: K) -> Result<Option<O>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -105,7 +106,7 @@ impl CacheAccess for RedisCache {
         }
     }
 
-    fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<bool> {
+    fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K) -> Result<bool> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -116,7 +117,7 @@ impl CacheAccess for RedisCache {
         redis_key_exists(&connection, redis_key)
     }
 
-    fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
+    fn remove<K: ToString, O: Cacheable>(&self, key: K) -> Result<()> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -127,17 +128,33 @@ impl CacheAccess for RedisCache {
     }
 }
 
+#[cfg(feature = "hashset")]
 impl HashSetAccess for RedisCache {
-    fn set_insert<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
-        unimplemented!()
+    fn set_insert<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
+        redis_set_add(&connection, group_id.to_string(), member.to_string())
     }
 
-    fn set_contains<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<bool> {
-        unimplemented!()
+    fn set_contains<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
+        redis_set_is_member(&connection, group_id.to_string(), member.to_string())
     }
 
-    fn set_remove<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
-        unimplemented!()
+    fn set_remove<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
+        redis_set_remove(&connection, group_id.to_string(), member.to_string())
     }
 }
 
@@ -183,6 +200,30 @@ fn redis_delete(con: &redis::Connection, key: String) -> Result<()> {
 fn redis_key_exists(con: &redis::Connection, key: String) -> Result<bool> {
     match con.exists::<String, bool>(key) {
         Ok(res) => Ok(res),
+        Err(_) => Err(CacheError::DeletionError(String::new())),
+    }
+}
+
+#[cfg(feature = "hashset")]
+fn redis_set_add(con: &redis::Connection, group: String, member: String) -> Result<()> {
+    match con.sadd::<String, String, ()>(group, member) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(CacheError::DeletionError(String::new())),
+    }
+}
+
+#[cfg(feature = "hashset")]
+fn redis_set_is_member(con: &redis::Connection, group: String, member: String) -> Result<bool> {
+    match con.sismember::<String, String, bool>(group, member) {
+        Ok(res) => Ok(res),
+        Err(_) => Err(CacheError::DeletionError(String::new())),
+    }
+}
+
+#[cfg(feature = "hashset")]
+fn redis_set_remove(con: &redis::Connection, group: String, member: String) -> Result<()> {
+    match con.srem::<String, String, ()>(group, member) {
+        Ok(_) => Ok(()),
         Err(_) => Err(CacheError::DeletionError(String::new())),
     }
 }

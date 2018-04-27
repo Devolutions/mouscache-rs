@@ -1,6 +1,6 @@
 [package]
 name = "mouscache_test"
-version = "0.3.2"
+version = "0.4.0"
 authors = ["richer <richer.arc@gmail.com>"]
 publish = false
 
@@ -8,6 +8,7 @@ publish = false
 
 [dependencies.mouscache]
 path = "../mouscache"
+features = ["hashset"]
 
 [dependencies.mouscache_derive]
 path = "../mouscache_derive"

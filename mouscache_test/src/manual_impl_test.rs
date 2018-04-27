@@ -51,7 +51,7 @@ fn memory_cache_test() {
         field2: String::from("Hello, World!"),
     };
 
-    let mut cache = mouscache::memory();
+    let cache = mouscache::memory();
 
     let _ = cache.insert("test", data.clone());
 
@@ -68,7 +68,7 @@ fn redis_cache_test() {
         field2: String::from("Hello, World!"),
     };
 
-    if let Ok(mut cache) = mouscache::redis("localhost", None) {
+    if let Ok(cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
         let data2: DataTest = cache.get("test").unwrap().unwrap();
