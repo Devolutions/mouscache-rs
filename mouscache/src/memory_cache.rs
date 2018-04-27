@@ -1,10 +1,10 @@
 use std::time::{Instant, Duration};
 use std::collections::hash_map::HashMap;
+use std::collections::hash_set::HashSet;
 use Result;
-use Cache;
-use Cache::Memory;
 use Cacheable;
 use CacheAccess;
+use HashSetAccess;
 use std::sync::RwLock;
 use std::sync::Arc;
 
@@ -30,13 +30,15 @@ impl Expiration {
 type MemCacheable = (Box<Cacheable>, Option<Expiration>);
 
 struct Inner {
-    pub cache: RwLock<HashMap<String, MemCacheable>>
+    pub cache: RwLock<HashMap<String, MemCacheable>>,
+    pub set: RwLock<HashSet<String>>
 }
 
 impl Inner {
     pub fn new() -> Self {
         Inner {
-            cache: RwLock::new(HashMap::new())
+            cache: RwLock::new(HashMap::new()),
+            set: RwLock::new(HashSet::new())
         }
     }
 }
@@ -54,10 +56,10 @@ impl Clone for MemoryCache {
 }
 
 impl MemoryCache {
-    pub fn new() -> Cache {
-        Memory(MemoryCache {
+    pub fn new() -> MemoryCache {
+        MemoryCache {
             inner: Arc::new(Inner::new())
-        })
+        }
     }
 }
 
@@ -102,10 +104,30 @@ impl CacheAccess for MemoryCache {
         Ok(None)
     }
 
+    fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<bool> {
+        let cache = self.inner.cache.read().unwrap();
+        let tkey = gen_key::<K, O>(key);
+        Ok(cache.contains_key(&tkey))
+    }
+
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
         let tkey = gen_key::<K, O>(key);
         self.inner.cache.write().unwrap().remove(&tkey);
         Ok(())
+    }
+}
+
+impl HashSetAccess for MemoryCache {
+    fn set_insert<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn set_contains<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_remove<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        unimplemented!()
     }
 }
 

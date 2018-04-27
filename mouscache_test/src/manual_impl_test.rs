@@ -1,5 +1,6 @@
 use std::any::Any;
-use mouscache::{Cacheable, CacheError, Result, MemoryCache, RedisCache};
+use mouscache;
+use mouscache::{Cacheable, CacheError, Result};
 use std::collections::hash_map::HashMap;
 
 #[derive(Clone, Debug)]
@@ -50,7 +51,7 @@ fn memory_cache_test() {
         field2: String::from("Hello, World!"),
     };
 
-    let mut cache = MemoryCache::new();
+    let mut cache = mouscache::memory();
 
     let _ = cache.insert("test", data.clone());
 
@@ -67,7 +68,7 @@ fn redis_cache_test() {
         field2: String::from("Hello, World!"),
     };
 
-    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+    if let Ok(mut cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
         let data2: DataTest = cache.get("test").unwrap().unwrap();

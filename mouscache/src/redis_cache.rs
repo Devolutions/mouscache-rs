@@ -1,12 +1,11 @@
 use std::net;
 use std::mem::discriminant;
 use std::collections::hash_map::HashMap;
-use Cache;
-use Cache::Redis;
 use Result;
 use CacheError;
 use Cacheable;
 use CacheAccess;
+use HashSetAccess;
 use redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
@@ -28,7 +27,7 @@ impl Clone for RedisCache {
 }
 
 impl RedisCache {
-    pub fn new(host: &str, password: Option<&str>) -> Result<Cache> {
+    pub fn new(host: &str, password: Option<&str>) -> Result<RedisCache> {
         let host_vec: Vec<&str> = host.split(":").collect();
 
         let ips: Vec<net::IpAddr> = match lookup_host(host_vec[0]) {
@@ -63,9 +62,9 @@ impl RedisCache {
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
 
-            return Ok(Redis(RedisCache {
+            return Ok(RedisCache {
                 connection_pool,
-            }));
+            });
         }
 
         Err(CacheError::Other(format!("Could'n find any valid IP for host {} ", host)))
@@ -106,6 +105,17 @@ impl CacheAccess for RedisCache {
         }
     }
 
+    fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+
+        let redis_key = redis_key_create::<K, O>(key);
+
+        redis_key_exists(&connection, redis_key)
+    }
+
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
@@ -114,6 +124,20 @@ impl CacheAccess for RedisCache {
 
         let redis_key = redis_key_create::<K, O>(key);
         redis_delete(&connection, redis_key)
+    }
+}
+
+impl HashSetAccess for RedisCache {
+    fn set_insert<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn set_contains<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_remove<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        unimplemented!()
     }
 }
 
@@ -152,6 +176,13 @@ fn redis_hash_get_all(con: &redis::Connection, key: String) -> Result<HashMap<St
 fn redis_delete(con: &redis::Connection, key: String) -> Result<()> {
     match con.del::<String, ()>(key) {
         Ok(_) => Ok(()),
+        Err(_) => Err(CacheError::DeletionError(String::new())),
+    }
+}
+
+fn redis_key_exists(con: &redis::Connection, key: String) -> Result<bool> {
+    match con.exists::<String, bool>(key) {
+        Ok(res) => Ok(res),
         Err(_) => Err(CacheError::DeletionError(String::new())),
     }
 }

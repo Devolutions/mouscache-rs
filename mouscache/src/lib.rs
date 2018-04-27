@@ -9,8 +9,8 @@ mod redis_cache;
 
 use std::{any::Any, collections::HashMap};
 
-pub use memory_cache::MemoryCache;
-pub use redis_cache::RedisCache;
+use memory_cache::MemoryCache;
+use redis_cache::RedisCache;
 pub use error::CacheError;
 
 pub type Result<T> = std::result::Result<T, CacheError>;
@@ -23,9 +23,16 @@ pub trait Cacheable {
     fn as_any(&self) -> &Any;
 }
 
-pub trait CacheAccess {
+trait HashSetAccess {
+    fn set_insert<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()>;
+    fn set_contains<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<bool>;
+    fn set_remove<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()>;
+}
+
+trait CacheAccess {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K, obj: O) -> Result<()>;
     fn get<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<Option<O>>;
+    fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&mut self, key: K) -> Result<bool>;
     fn remove<K: ToString, O: Cacheable>(&mut self, key: K) -> Result<()>;
 }
 
@@ -66,7 +73,39 @@ impl Cache {
             Redis(ref mut c) => c.remove::<K, O>(key),
         }
     }
+
+    pub fn set_insert<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        match *self {
+            Memory(ref mut c) => c.set_insert(group_id, member),
+            Redis(ref mut c) => c.set_insert(group_id, member),
+        }
+    }
+
+    pub fn set_contains<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<bool> {
+        match *self {
+            Memory(ref mut c) => c.set_contains(group_id, member),
+            Redis(ref mut c) => c.set_contains(group_id, member),
+        }
+    }
+
+    pub fn set_remove<G: ToString, K: ToString>(&mut self, group_id: G, member: K) -> Result<()> {
+        match *self {
+            Memory(ref mut c) => c.set_remove(group_id, member),
+            Redis(ref mut c) => c.set_remove(group_id, member),
+        }
+    }
 }
 
 unsafe impl Send for Cache {}
 unsafe impl Sync for Cache {}
+
+pub fn memory() -> Cache {
+    Memory(MemoryCache::new())
+}
+
+pub fn redis(host: &str, password: Option<&str>) -> Result<Cache> {
+    match RedisCache::new(host, password) {
+        Ok(rc) => Ok(Redis(rc)),
+        Err(e) => Err(e),
+    }
+}
