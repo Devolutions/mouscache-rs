@@ -5,7 +5,7 @@ A small lib to manipulate object with redis or an in-memory cache
 
 ## Basic Usage
 ```rust
-use mouscache::{MemoryCache, RedisCache};
+use mouscache;
 
 #[derive(Cacheable, Clone, Debug)]
 struct YourData {
@@ -19,7 +19,7 @@ fn main() {
         field2: String::from("Hello, World!"),
     };
 
-    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+    if let Ok(mut cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
         let data2: YourData = cache.get("test").unwrap();
@@ -36,7 +36,7 @@ Mouscache now support 2 custom attribute to customize entry :
 ### `expires` Attribute
 Specifies a duration in sec after which the entry is invalid
 ```rust
-use mouscache::{MemoryCache, RedisCache};
+use mouscache;
 
 #[derive(Cacheable, Clone, Debug)]
 #[cache(expires="10")] // each entry of type YouCustomDataType will be valid 10 sec.
@@ -48,7 +48,7 @@ struct YouCustomDataType {
 ### `rename` Attribute
 Specifies the name which will be used to insert the entry
 ```rust
-use mouscache::{MemoryCache, RedisCache};
+use mouscache;
 
 #[derive(Cacheable, Clone, Debug)]
 #[cache(rename="ThisNameIsCooler")] // each entry of type YouCustomDataType will be inserted with ThisNameIsCooler

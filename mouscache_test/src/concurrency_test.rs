@@ -1,4 +1,4 @@
-use mouscache::{MemoryCache, RedisCache};
+use mouscache;
 
 #[derive(Cacheable, Clone, Debug)]
 struct ConcurrentData {
@@ -15,7 +15,7 @@ fn memory_cache_concurrency_test() {
         field2: 123456789
     };
 
-    let mut cache = MemoryCache::new();
+    let cache = mouscache::memory();
 
     let _ = cache.insert("test", data.clone());
 
@@ -23,7 +23,7 @@ fn memory_cache_concurrency_test() {
 
     for _i in 1..10 {
         let assert_data = data.clone();
-        let mut cache_clone = cache.clone();
+        let cache_clone = cache.clone();
 
         let h = thread::spawn(move || {
             let rdata: ConcurrentData = cache_clone.get("test").unwrap().unwrap();
@@ -50,14 +50,14 @@ fn redis_cache_concurrency_test() {
         field2: 123456789
     };
 
-    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+    if let Ok(cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
         let mut handle_vec = Vec::new();
 
         for _i in 1..10 {
             let assert_data = data.clone();
-            let mut cache_clone = cache.clone();
+            let cache_clone = cache.clone();
 
             let h = thread::spawn(move || {
                 let rdata: ConcurrentData = cache_clone.get("test").unwrap().unwrap();

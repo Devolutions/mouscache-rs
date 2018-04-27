@@ -1,5 +1,5 @@
 use std;
-use mouscache::{MemoryCache, RedisCache};
+use mouscache;
 
 #[derive(Cacheable, Clone, Debug)]
 struct DataTestDerive {
@@ -16,7 +16,7 @@ fn memory_cache_test_derive() {
         field_uuid: String::from("a2f5c0d6-6191-4172-81c9-c3531df19407"),
     };
 
-    let mut cache = MemoryCache::new();
+    let cache = mouscache::memory();
 
     let _ = cache.insert("test", data.clone());
 
@@ -36,7 +36,7 @@ fn redis_cache_test_derive() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+    if let Ok(cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("test", data.clone());
 
         println!("data inserted");
@@ -64,7 +64,7 @@ fn redis_cache_test_derive_expires() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(mut cache) = RedisCache::new("localhost", None) {
+    if let Ok(cache) = mouscache::redis("localhost", None) {
         let _ = cache.insert("exp", data.clone());
 
         println!("data inserted");
@@ -92,7 +92,7 @@ fn redis_cache_test_db() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(mut cache) = RedisCache::new("localhost:6379/3", None) {
+    if let Ok(cache) = mouscache::redis("localhost:6379/3", None) {
         let _ = cache.insert("test", data.clone());
 
         println!("data inserted");
