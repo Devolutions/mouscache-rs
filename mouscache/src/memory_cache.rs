@@ -89,7 +89,9 @@ impl CacheAccess for MemoryCache {
                     if exp.is_expired() {
                         delete_entry = true;
                     }
-                } else {
+                }
+
+                if !delete_entry {
                     let struct_obj: O = match obj.as_any().downcast_ref::<O>() {
                         Some(struct_obj) => struct_obj.clone(),
                         None => panic!("Invalid type in mouscache")
