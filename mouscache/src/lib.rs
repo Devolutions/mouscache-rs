@@ -34,6 +34,15 @@ pub enum Cache {
     Redis(RedisCache),
 }
 
+impl Clone for Cache {
+    fn clone(&self) -> Self {
+        match *self {
+            Memory(ref c) => Memory(c.clone()),
+            Redis(ref c) => Redis(c.clone()),
+        }
+    }
+}
+
 use Cache::*;
 
 impl Cache {
@@ -58,3 +67,6 @@ impl Cache {
         }
     }
 }
+
+unsafe impl Send for Cache {}
+unsafe impl Sync for Cache {}

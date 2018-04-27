@@ -19,6 +19,14 @@ pub struct RedisCache {
     connection_pool: Pool<RedisConnectionManager>,
 }
 
+impl Clone for RedisCache {
+    fn clone(&self) -> Self {
+        RedisCache {
+            connection_pool: self.connection_pool.clone()
+        }
+    }
+}
+
 impl RedisCache {
     pub fn new(host: &str, password: Option<&str>) -> Result<Cache> {
         let host_vec: Vec<&str> = host.split(":").collect();
