@@ -1,4 +1,3 @@
-use std;
 use mouscache::{MemoryCache, RedisCache};
 
 #[derive(Cacheable, Clone, Debug)]
@@ -37,7 +36,7 @@ fn memory_cache_concurrency_test() {
     }
 
     for handle in handle_vec {
-        handle.join();
+        let _ = handle.join();
         println!("thread joined");
     }
 }
@@ -71,7 +70,7 @@ fn redis_cache_concurrency_test() {
         }
 
         for handle in handle_vec {
-            handle.join();
+            let _ = handle.join();
             println!("thread joined");
         }
     }
