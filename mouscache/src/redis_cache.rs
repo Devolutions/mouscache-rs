@@ -12,11 +12,116 @@ use redis::Commands;
 use dns_lookup::lookup_host;
 
 use r2d2::Pool;
-use r2d2_redis::RedisConnectionManager;
+
+mod r2d2_test {
+    use redis;
+    use redis::cmd;
+    use r2d2;
+    use std::error;
+    use std::error::Error as _StdError;
+    use std::fmt;
+
+    /// A unified enum of errors returned by redis::Client
+    #[derive(Debug)]
+    pub enum Error {
+        /// A redis::RedisError
+        Other(String),
+    }
+
+    impl fmt::Display for Error {
+        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            match self.cause() {
+                Some(cause) => write!(fmt, "{}: {}", self.description(), cause),
+                None => write!(fmt, "{}", self.description()),
+            }
+        }
+    }
+
+    impl error::Error for Error {
+        fn description(&self) -> &str {
+            match *self {
+                Error::Other(ref err) => err.as_str()
+            }
+        }
+
+        fn cause(&self) -> Option<&error::Error> {
+            match *self {
+                Error::Other(ref _err) => None
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct RedisConnectionManager {
+        connection_info: redis::ConnectionInfo,
+        password: Option<String>,
+        db: Option<u16>,
+    }
+
+    impl RedisConnectionManager {
+        pub fn new<T: redis::IntoConnectionInfo>(host: T, password: Option<&str>, db: Option<u16>)
+                                                 -> Result<RedisConnectionManager, redis::RedisError> {
+            Ok(RedisConnectionManager {
+                connection_info: try!(host.into_connection_info()),
+                password: password.map(|s| {s.to_string()}),
+                db
+            })
+        }
+    }
+
+    impl r2d2::ManageConnection for RedisConnectionManager {
+        type Connection = redis::Connection;
+        type Error = Error;
+
+        fn connect(&self) -> Result<redis::Connection, Error> {
+            match redis::Client::open(self.connection_info.clone()) {
+                Ok(client) => {
+                    let conn_res = client.get_connection();
+
+                    if let Ok(conn) = conn_res {
+                        if let Some(ref p) = self.password {
+                            match cmd("AUTH").arg(p).query::<bool>(&conn) {
+                                Ok(true) => {}
+                                _ => {
+                                    return Err(Error::Other("Password authentication failed".to_string()));
+                                }
+                            }
+                        }
+
+                        if let Some(db) = self.db {
+                            match cmd("SELECT").arg(db).query::<bool>(&conn) {
+                                Ok(true) => {}
+                                _ => {
+                                    return Err(Error::Other("Redis server refused to switch database".to_string()));
+                                }
+                            }
+                        }
+
+                        Ok(conn)
+                    } else {
+                        Err(Error::Other("Unable to connect to redis server".to_string()))
+                    }
+                },
+                Err(err) => Err(Error::Other(err.to_string()))
+            }
+        }
+
+        fn is_valid(&self, conn: &mut redis::Connection) -> Result<(), Error> {
+            redis::cmd("PING").query(conn).map_err(|_| {
+                Error::Other("Unable to ping redis server".to_string())
+            })
+        }
+
+        fn has_broken(&self, _conn: &mut redis::Connection) -> bool {
+            false
+        }
+    }
+}
+
 
 #[allow(dead_code)]
 pub struct RedisCache {
-    connection_pool: Pool<RedisConnectionManager>,
+    connection_pool: Pool<r2d2_test::RedisConnectionManager>,
 }
 
 impl Clone for RedisCache {
@@ -48,16 +153,18 @@ impl RedisCache {
                 ip_v4.to_string()
             };
 
-            let mut url = match password {
-                Some(p) => format!("redis://:{}@{}", p, ip_host),
-                None => format!("redis://{}", ip_host),
-            };
+//            let mut url = match password {
+//                Some(p) => format!("redis://:{}@{}", p, ip_host),
+//                None => format!("redis://{}", ip_host),
+//            };
+//
+//            if let Some(db_index) = db {
+//                url = format!("{}/{}", url, db_index);
+//            }
 
-            if let Some(db_index) = db {
-                url = format!("{}/{}", url, db_index);
-            }
+            let url = format!("redis://{}", ip_host);
 
-            let manager = match RedisConnectionManager::new(url.as_str()) {
+            let manager = match r2d2_test::RedisConnectionManager::new(url.as_str(), password, db) {
                 Ok(m) => m,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
