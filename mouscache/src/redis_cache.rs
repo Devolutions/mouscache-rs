@@ -9,7 +9,6 @@ use CacheAccess;
 use HashSetAccess;
 use redis;
 use redis::Commands;
-use redis::cmd;
 use dns_lookup::lookup_host;
 
 use r2d2::Pool;
@@ -49,7 +48,14 @@ impl RedisCache {
                 ip_v4.to_string()
             };
 
-            let url = format!("redis://{}", ip_host);
+            let mut url = match password {
+                Some(p) => format!("redis://:{}@{}", p, ip_host),
+                None => format!("redis://{}", ip_host),
+            };
+
+            if let Some(db_index) = db {
+                url = format!("{}/{}", url, db_index);
+            }
 
             let manager = match RedisConnectionManager::new(url.as_str()) {
                 Ok(m) => m,
@@ -60,25 +66,6 @@ impl RedisCache {
                 Ok(cp) => cp,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
-
-            let connection_test = match connection_pool.get() {
-                Ok(con) => con,
-                Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
-            };
-
-            if let Some(ref passwd) = password {
-                    match cmd("AUTH").arg(&**passwd).query::<bool>(&*connection_test) {
-                        Ok(true) => {}
-                        _ => return Err(CacheError::Other("Password authentication failed".to_string())),
-                    }
-            }
-
-            if let Some(db_index) = db {
-                match cmd("SELECT").arg(db_index).query::<bool>(&*connection_test) {
-                    Ok(true) => {}
-                    _ => return Err(CacheError::Other("Redis server refused to switch database".to_string())),
-                }
-            }
 
             return Ok(RedisCache {
                 connection_pool,
