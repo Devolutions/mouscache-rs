@@ -49,10 +49,7 @@ impl RedisCache {
                 ip_v4.to_string()
             };
 
-            let url = match password {
-                Some(p) => format!("redis://:{}@{}", p, ip_host),
-                None => format!("redis://{}", ip_host),
-            };
+            let url = format!("redis://{}", ip_host);
 
             let manager = match RedisConnectionManager::new(url.as_str()) {
                 Ok(m) => m,
