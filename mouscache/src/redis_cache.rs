@@ -83,7 +83,7 @@ mod r2d2_test {
                             match cmd("AUTH").arg(p).query::<bool>(&conn) {
                                 Ok(true) => {}
                                 _ => {
-                                    return Err(Error::Other("Password authentication failed".to_string()));
+                                    return Err(Error::Other(format!("Password authentication failed: Bad password ({})", p)));
                                 }
                             }
                         }
@@ -92,7 +92,7 @@ mod r2d2_test {
                             match cmd("SELECT").arg(db).query::<bool>(&conn) {
                                 Ok(true) => {}
                                 _ => {
-                                    return Err(Error::Other("Redis server refused to switch database".to_string()));
+                                    return Err(Error::Other(format!("Redis server refused to switch database: Bad index ({:?})", db)));
                                 }
                             }
                         }
