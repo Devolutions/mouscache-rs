@@ -11,9 +11,15 @@ fn memory_cache_test_hash_set() {
 
 #[test]
 fn redis_cache_test_hash_set() {
-    if let Ok(cache) = mouscache::redis("localhost", None) {
-        let _ = cache.set_insert("test_group", "123321");
+    let cache = match mouscache::redis("localhost", Some("123456"), None) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        }
+    };
 
-        assert!(cache.set_contains("test_group", "123321").unwrap());
-    }
+    let _ = cache.set_insert("test_group", "123321");
+
+    assert!(cache.set_contains("test_group", "123321").unwrap());
 }

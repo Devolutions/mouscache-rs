@@ -23,7 +23,7 @@ impl Cacheable for DataTest {
 
     fn from_redis_obj(map: HashMap<String, String>) -> Result<Self> where Self: Sized {
         if map.len() > 0 {
-            let field1 : u16 = map["field1"].parse().unwrap();
+            let field1: u16 = map["field1"].parse().unwrap();
             let field2 = map["field2"].clone();
 
             Ok(DataTest {
@@ -68,12 +68,18 @@ fn redis_cache_test() {
         field2: String::from("Hello, World!"),
     };
 
-    if let Ok(cache) = mouscache::redis("localhost", None) {
-        let _ = cache.insert("test", data.clone());
+    let cache = match mouscache::redis("localhost", Some("123456"), None) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        },
+    };
 
-        let data2: DataTest = cache.get("test").unwrap().unwrap();
+    let _ = cache.insert("test", data.clone());
 
-        assert_eq!(data.field1, data2.field1);
-        assert_eq!(data.field2, data2.field2);
-    }
+    let data2: DataTest = cache.get("test").unwrap().unwrap();
+
+    assert_eq!(data.field1, data2.field1);
+    assert_eq!(data.field2, data2.field2);
 }

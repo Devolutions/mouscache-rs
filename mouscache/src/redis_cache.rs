@@ -9,6 +9,7 @@ use CacheAccess;
 use HashSetAccess;
 use redis;
 use redis::Commands;
+use redis::cmd;
 use dns_lookup::lookup_host;
 
 use r2d2::Pool;
@@ -28,7 +29,7 @@ impl Clone for RedisCache {
 }
 
 impl RedisCache {
-    pub fn new(host: &str, password: Option<&str>) -> Result<RedisCache> {
+    pub fn new(host: &str, password: Option<&str>, db: Option<u16>) -> Result<RedisCache> {
         let host_vec: Vec<&str> = host.split(":").collect();
 
         let ips: Vec<net::IpAddr> = match lookup_host(host_vec[0]) {
@@ -62,6 +63,25 @@ impl RedisCache {
                 Ok(cp) => cp,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
+
+            let connection_test = match connection_pool.get() {
+                Ok(con) => con,
+                Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+            };
+
+            if let Some(ref passwd) = password {
+                    match cmd("AUTH").arg(&**passwd).query::<bool>(&*connection_test) {
+                        Ok(true) => {}
+                        _ => return Err(CacheError::Other("Password authentication failed".to_string())),
+                    }
+            }
+
+            if let Some(db_index) = db {
+                match cmd("SELECT").arg(db_index).query::<bool>(&*connection_test) {
+                    Ok(true) => {}
+                    _ => return Err(CacheError::Other("Redis server refused to switch database".to_string())),
+                }
+            }
 
             return Ok(RedisCache {
                 connection_pool,

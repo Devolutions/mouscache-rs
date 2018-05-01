@@ -5,7 +5,7 @@ use mouscache;
 struct DataTestDerive {
     field1: u16,
     field2: String,
-    field_uuid: String
+    field_uuid: String,
 }
 
 #[test]
@@ -36,22 +36,28 @@ fn redis_cache_test_derive() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(cache) = mouscache::redis("localhost", None) {
-        let _ = cache.insert("test", data.clone());
+    let cache = match mouscache::redis("localhost", Some("123456"), None) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        }
+    };
 
-        println!("data inserted");
+    let _ = cache.insert("test", data.clone());
 
-        let data2: DataTestDerive = cache.get("test").unwrap().unwrap();
+    println!("data inserted");
 
-        println!("Data retrived {:?}", data);
+    let data2: DataTestDerive = cache.get("test").unwrap().unwrap();
 
-        assert_eq!(data.field1, data2.field1);
-        assert_eq!(data.field2, data2.field2);
-    }
+    println!("Data retrived {:?}", data);
+
+    assert_eq!(data.field1, data2.field1);
+    assert_eq!(data.field2, data2.field2);
 }
 
 #[derive(Cacheable, Clone, Debug)]
-#[cache(expires="1")]
+#[cache(expires = "1")]
 struct DataTestExpires {
     field_temp: String,
 }
@@ -64,20 +70,26 @@ fn redis_cache_test_derive_expires() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(cache) = mouscache::redis("localhost", None) {
-        let _ = cache.insert("exp", data.clone());
-
-        println!("data inserted");
-
-        if let Ok(Some(data2)) = cache.get::<&str, DataTestExpires>("exp") {
-            assert_eq!(data.field_temp, data2.field_temp);
+    let cache = match mouscache::redis("localhost", Some("123456"), None) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
         }
+    };
 
-        std::thread::sleep(std::time::Duration::from_secs(1));
+    let _ = cache.insert("exp", data.clone());
 
-        if let Ok(Some(_)) = cache.get::<&str, DataTestExpires>("exp") {
-            assert!(false);
-        }
+    println!("data inserted");
+
+    if let Ok(Some(data2)) = cache.get::<&str, DataTestExpires>("exp") {
+        assert_eq!(data.field_temp, data2.field_temp);
+    }
+
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    if let Ok(Some(_)) = cache.get::<&str, DataTestExpires>("exp") {
+        assert!(false);
     }
 }
 
@@ -92,16 +104,22 @@ fn redis_cache_test_db() {
 
     println!("Initial data {:?}", data);
 
-    if let Ok(cache) = mouscache::redis("localhost:6379/3", None) {
-        let _ = cache.insert("test", data.clone());
+    let cache = match mouscache::redis("localhost", Some("123456"), Some(3)) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        }
+    };
 
-        println!("data inserted");
+    let _ = cache.insert("test", data.clone());
 
-        let data2: DataTestDerive = cache.get("test").unwrap().unwrap();
+    println!("data inserted");
 
-        println!("Data retrived {:?}", data);
+    let data2: DataTestDerive = cache.get("test").unwrap().unwrap();
 
-        assert_eq!(data.field1, data2.field1);
-        assert_eq!(data.field2, data2.field2);
-    }
+    println!("Data retrived {:?}", data);
+
+    assert_eq!(data.field1, data2.field1);
+    assert_eq!(data.field2, data2.field2);
 }

@@ -107,8 +107,8 @@ pub fn memory() -> Cache {
     Memory(MemoryCache::new())
 }
 
-pub fn redis(host: &str, password: Option<&str>) -> Result<Cache> {
-    match RedisCache::new(host, password) {
+pub fn redis(host: &str, password: Option<&str>, db: Option<u16>) -> Result<Cache> {
+    match RedisCache::new(host, password, db) {
         Ok(rc) => Ok(Redis(rc)),
         Err(e) => Err(e),
     }
