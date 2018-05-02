@@ -141,8 +141,5 @@ impl HashSetAccess for MemoryCache {
 }
 
 fn gen_key<K: ToString, O: Cacheable>(key: K) -> String {
-    let mut new_key = String::from(O::model_name());
-    new_key.push_str(":");
-    new_key.push_str(key.to_string().as_str());
-    new_key
+    format!("{}:{}", O::model_name(), key.to_string())
 }

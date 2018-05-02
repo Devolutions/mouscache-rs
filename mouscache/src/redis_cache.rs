@@ -153,15 +153,6 @@ impl RedisCache {
                 ip_v4.to_string()
             };
 
-//            let mut url = match password {
-//                Some(p) => format!("redis://:{}@{}", p, ip_host),
-//                None => format!("redis://{}", ip_host),
-//            };
-//
-//            if let Some(db_index) = db {
-//                url = format!("{}/{}", url, db_index);
-//            }
-
             let url = format!("redis://{}", ip_host);
 
             let manager = match r2d2_test::RedisConnectionManager::new(url.as_str(), password, db) {
@@ -270,10 +261,7 @@ impl HashSetAccess for RedisCache {
 }
 
 fn redis_key_create<K: ToString, O: Cacheable>(key: K) -> String {
-    let mut redis_key = String::from(O::model_name());
-    redis_key.push_str(":");
-    redis_key.push_str(key.to_string().as_str());
-    redis_key
+    format!("{}:{}", O::model_name(), key.to_string())
 }
 
 fn redis_hash_set_multiple_with_expire<F: redis::ToRedisArgs, V: redis::ToRedisArgs>(con: &redis::Connection, key: String, v: &[(F, V)], ttl_sec: usize) -> Result<()> {
