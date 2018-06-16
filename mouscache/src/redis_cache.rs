@@ -13,6 +13,8 @@ use dns_lookup::lookup_host;
 
 use r2d2::Pool;
 
+const DB_CONNECTION_TIMEOUT_MS: i64 = 5000;
+
 mod r2d2_test {
     use redis;
     use redis::cmd;
@@ -160,7 +162,11 @@ impl RedisCache {
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
 
-            let connection_pool = match Pool::builder().build(manager) {
+            let connection_pool = match Pool::builder()
+                .max_size(15)
+                .min_idle(Some(0))
+                .connection_timeout(::std::time::Duration::from_millis(DB_CONNECTION_TIMEOUT_MS as u64))
+                .build(manager) {
                 Ok(cp) => cp,
                 Err(e) => return Err(CacheError::Other(e.to_string())),
             };
