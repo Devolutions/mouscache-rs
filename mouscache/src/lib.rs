@@ -1,6 +1,7 @@
 extern crate r2d2;
 extern crate redis;
 extern crate dns_lookup;
+extern crate parking_lot;
 
 mod error;
 mod memory_cache;
