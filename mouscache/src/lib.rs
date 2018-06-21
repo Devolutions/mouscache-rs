@@ -32,27 +32,27 @@ trait CacheFunc {
     fn hash_get_all<T: Cacheable>(&self, key: &str) -> Result<T>;
     fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64>;
     fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64>;
-    fn hash_keys(&self, key: &str) -> Result<Vec<&str>>;
+    fn hash_keys(&self, key: &str) -> Result<Vec<String>>;
     fn hash_len(&self, key: &str) -> Result<usize>;
-    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<&str>>>;
+    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>>;
     fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)] ) -> Result<bool>;
     fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
     fn hash_set_all<T: Cacheable>(&self, key: &str, cacheable: T) -> Result<bool>;
     fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
     fn hash_str_len(&self, key: &str, field: &str) -> Result<u64>;
-    fn hash_values(&self, key: &str) -> Result<Vec<&str>>;
+    fn hash_values(&self, key: &str) -> Result<Vec<String>>;
     // Redis-like Set related functions
     fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool>;
     fn set_card(&self, key: &str) -> Result<u64>;
-    fn set_diff(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>>;
     fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64>;
-    fn set_inter(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>>;
     fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64>;
     fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool>;
-    fn set_members(&self, key: &str) -> Result<Vec<&str>>;
+    fn set_members(&self, key: &str) -> Result<Vec<String>>;
     fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool>;
     fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool>;
-    fn set_union(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_union(&self, keys: &[&str]) -> Result<Vec<String>>;
     fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64>;
 
 }

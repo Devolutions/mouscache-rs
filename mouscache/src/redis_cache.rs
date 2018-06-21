@@ -292,7 +292,8 @@ impl CacheFunc for RedisCache {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
-        unimplemented!()
+        let map: HashMap<String, String> = connection.hgetall(key)?;
+        T::from_redis_obj(map)
     }
 
     fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
@@ -300,7 +301,7 @@ impl CacheFunc for RedisCache {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
-        unimplemented!()
+        connection.hincr(key, field, incr).map_err(|e| e.into())
     }
 
     fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64> {
@@ -311,7 +312,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn hash_keys(&self, key: &str) -> Result<Vec<&str>> {
+    fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -327,7 +328,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<&str>>> {
+    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -375,7 +376,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn hash_values(&self, key: &str) -> Result<Vec<&str>> {
+    fn hash_values(&self, key: &str) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -399,7 +400,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn set_diff(&self, keys: &[&str]) -> Result<Vec<&str>> {
+    fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -415,7 +416,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn set_inter(&self, keys: &[&str]) -> Result<Vec<&str>> {
+    fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -439,7 +440,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn set_members(&self, key: &str) -> Result<Vec<&str>> {
+    fn set_members(&self, key: &str) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -463,7 +464,7 @@ impl CacheFunc for RedisCache {
         unimplemented!()
     }
 
-    fn set_union(&self, keys: &[&str]) -> Result<Vec<&str>> {
+    fn set_union(&self, keys: &[&str]) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
