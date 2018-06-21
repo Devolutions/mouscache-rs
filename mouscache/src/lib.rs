@@ -22,11 +22,39 @@ pub trait Cacheable {
     fn as_any(&self) -> &Any;
 }
 
-#[cfg(feature = "hashset")]
-trait HashSetAccess {
-    fn set_insert<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()>;
-    fn set_contains<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<bool>;
-    fn set_remove<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()>;
+use std::str::FromStr;
+
+trait CacheFunc {
+    // Redis-like HashSet related functions
+    fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool>;
+    fn hash_exists(&self, key: &str, field: &str) -> Result<bool>;
+    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<T>;
+    fn hash_get_all<T: Cacheable>(&self, key: &str) -> Result<T>;
+    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64>;
+    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64>;
+    fn hash_keys(&self, key: &str) -> Result<Vec<&str>>;
+    fn hash_len(&self, key: &str) -> Result<usize>;
+    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<&str>>>;
+    fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)] ) -> Result<bool>;
+    fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
+    fn hash_set_all<T: Cacheable>(&self, key: &str, cacheable: T) -> Result<bool>;
+    fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
+    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64>;
+    fn hash_values(&self, key: &str) -> Result<Vec<&str>>;
+    // Redis-like Set related functions
+    fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool>;
+    fn set_card(&self, key: &str) -> Result<u64>;
+    fn set_diff(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64>;
+    fn set_inter(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64>;
+    fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool>;
+    fn set_members(&self, key: &str) -> Result<Vec<&str>>;
+    fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool>;
+    fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool>;
+    fn set_union(&self, keys: &[&str]) -> Result<Vec<&str>>;
+    fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64>;
+
 }
 
 trait CacheAccess {
@@ -71,30 +99,6 @@ impl Cache {
         match *self {
             Memory(ref c) => c.remove::<K, O>(key),
             Redis(ref c) => c.remove::<K, O>(key),
-        }
-    }
-
-    #[cfg(feature = "hashset")]
-    pub fn set_insert<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
-        match *self {
-            Memory(ref c) => c.set_insert(group_id, member),
-            Redis(ref c) => c.set_insert(group_id, member),
-        }
-    }
-
-    #[cfg(feature = "hashset")]
-    pub fn set_contains<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<bool> {
-        match *self {
-            Memory(ref c) => c.set_contains(group_id, member),
-            Redis(ref c) => c.set_contains(group_id, member),
-        }
-    }
-
-    #[cfg(feature = "hashset")]
-    pub fn set_remove<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
-        match *self {
-            Memory(ref c) => c.set_remove(group_id, member),
-            Redis(ref c) => c.set_remove(group_id, member),
         }
     }
 }

@@ -5,13 +5,13 @@ use Result;
 use CacheError;
 use Cacheable;
 use CacheAccess;
-#[cfg(feature = "hashset")]
-use HashSetAccess;
+use CacheFunc;
 use redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
 
 use r2d2::Pool;
+use std::str::FromStr;
 
 const DB_CONNECTION_TIMEOUT_MS: i64 = 5000;
 
@@ -65,8 +65,8 @@ mod r2d2_test {
                                                  -> Result<RedisConnectionManager, redis::RedisError> {
             Ok(RedisConnectionManager {
                 connection_info: try!(host.into_connection_info()),
-                password: password.map(|s| {s.to_string()}),
-                db
+                password: password.map(|s| { s.to_string() }),
+                db,
             })
         }
     }
@@ -103,7 +103,7 @@ mod r2d2_test {
                     } else {
                         Err(Error::Other("Unable to connect to redis server".to_string()))
                     }
-                },
+                }
                 Err(err) => Err(Error::Other(err.to_string()))
             }
         }
@@ -146,9 +146,8 @@ impl RedisCache {
         if let Some((_, ip_v4)) = ips.iter()
             .enumerate()
             .find(|&(_index, ip)| {
-                discriminant(ip) == discriminant(&net::IpAddr::V4(net::Ipv4Addr::new(0,0,0,0)))
+                discriminant(ip) == discriminant(&net::IpAddr::V4(net::Ipv4Addr::new(0, 0, 0, 0)))
             }) {
-
             let ip_host = if host_vec.len() > 1 {
                 format!("{}:{}", ip_v4.to_string(), host_vec[1])
             } else {
@@ -236,99 +235,247 @@ impl CacheAccess for RedisCache {
     }
 }
 
-#[cfg(feature = "hashset")]
-impl HashSetAccess for RedisCache {
-    fn set_insert<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
-        let connection = match self.connection_pool.get() {
-            Ok(con) => con,
-            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
-        };
-
-        redis_set_add(&connection, group_id.to_string(), member.to_string())
-    }
-
-    fn set_contains<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<bool> {
-        let connection = match self.connection_pool.get() {
-            Ok(con) => con,
-            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
-        };
-
-        redis_set_is_member(&connection, group_id.to_string(), member.to_string())
-    }
-
-    fn set_remove<G: ToString, K: ToString>(&self, group_id: G, member: K) -> Result<()> {
-        let connection = match self.connection_pool.get() {
-            Ok(con) => con,
-            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
-        };
-
-        redis_set_remove(&connection, group_id.to_string(), member.to_string())
-    }
-}
-
 fn redis_key_create<K: ToString, O: Cacheable>(key: K) -> String {
     format!("{}:{}", O::model_name(), key.to_string())
 }
 
 fn redis_hash_set_multiple_with_expire<F: redis::ToRedisArgs, V: redis::ToRedisArgs>(con: &redis::Connection, key: String, v: &[(F, V)], ttl_sec: usize) -> Result<()> {
-    if let Ok(_) = redis_hash_set_multiple(con, key.clone(), v) {
-        match con.expire(key, ttl_sec) {
-            Ok(v) => Ok(v),
-            Err(e) => Err(CacheError::InsertionError(e.to_string())),
-        }
-    } else {
-        Err(CacheError::InsertionError(String::new()))
-    }
+    redis_hash_set_multiple(con, key.clone(), v)?;
+    con.expire(key, ttl_sec).map(|_: ::redis::Value| ()).map_err( |e| e.into())
 }
 
 fn redis_hash_set_multiple<F: redis::ToRedisArgs, V: redis::ToRedisArgs>(con: &redis::Connection, key: String, v: &[(F, V)]) -> Result<()> {
-    match con.hset_multiple::<String, F, V, ()>(key, v) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(CacheError::InsertionError(String::new())),
-    }
+    con.hset_multiple::<String, F, V, ()>(key, v).map_err( |e| e.into())
 }
 
 fn redis_hash_get_all(con: &redis::Connection, key: String) -> Result<HashMap<String, String>> {
-    match con.hgetall::<String, HashMap<String, String>>(key) {
-        Ok(v) => Ok(v),
-        Err(e) => Err(CacheError::Other(e.to_string())),
-    }
+    con.hgetall::<String, HashMap<String, String>>(key).map_err( |e| e.into())
 }
 
 fn redis_delete(con: &redis::Connection, key: String) -> Result<()> {
-    match con.del::<String, ()>(key) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(CacheError::DeletionError(String::new())),
-    }
+    con.del::<String, ()>(key).map_err( |e| e.into())
 }
 
 fn redis_key_exists(con: &redis::Connection, key: String) -> Result<bool> {
-    match con.exists::<String, bool>(key) {
-        Ok(res) => Ok(res),
-        Err(_) => Err(CacheError::DeletionError(String::new())),
-    }
+    con.exists::<String, bool>(key).map_err( |e| e.into())
 }
 
-#[cfg(feature = "hashset")]
-fn redis_set_add(con: &redis::Connection, group: String, member: String) -> Result<()> {
-    match con.sadd::<String, String, ()>(group, member) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(CacheError::DeletionError(String::new())),
-    }
-}
+impl CacheFunc for RedisCache {
+    fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
 
-#[cfg(feature = "hashset")]
-fn redis_set_is_member(con: &redis::Connection, group: String, member: String) -> Result<bool> {
-    match con.sismember::<String, String, bool>(group, member) {
-        Ok(res) => Ok(res),
-        Err(_) => Err(CacheError::DeletionError(String::new())),
+        connection.hdel(key, fields).map_err(|e| e.into())
     }
-}
 
-#[cfg(feature = "hashset")]
-fn redis_set_remove(con: &redis::Connection, group: String, member: String) -> Result<()> {
-    match con.srem::<String, String, ()>(group, member) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(CacheError::DeletionError(String::new())),
+    fn hash_exists(&self, key: &str, field: &str) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        connection.hexists(key, field).map_err(|e| e.into())
+    }
+
+    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<T> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        let val: String = connection.hget(key, field)?;
+        return T::from_str(val.as_ref()).map_err(|_| CacheError::Other("An error occured while parsing a redis value".to_string()))
+    }
+
+    fn hash_get_all<T: Cacheable>(&self, key: &str) -> Result<T> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_keys(&self, key: &str) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_len(&self, key: &str) -> Result<usize> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<&str>>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)]) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_set_all<T: Cacheable>(&self, key: &str, cacheable: T) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn hash_values(&self, key: &str) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_card(&self, key: &str) -> Result<u64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_diff(&self, keys: &[&str]) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_inter(&self, keys: &[&str]) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_members(&self, key: &str) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_union(&self, keys: &[&str]) -> Result<Vec<&str>> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
+    }
+
+    fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64> {
+        let connection = match self.connection_pool.get() {
+            Ok(con) => con,
+            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
+        };
+        unimplemented!()
     }
 }

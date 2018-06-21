@@ -33,16 +33,12 @@ type MemCacheable = (Box<Cacheable>, Option<Expiration>);
 
 struct Inner {
     pub cache: RwLock<HashMap<String, MemCacheable>>,
-    #[cfg(feature = "hashset")]
-    pub set: RwLock<HashSet<String>>
 }
 
 impl Inner {
     pub fn new() -> Self {
         Inner {
             cache: RwLock::new(HashMap::new()),
-            #[cfg(feature = "hashset")]
-            set: RwLock::new(HashSet::new())
         }
     }
 }

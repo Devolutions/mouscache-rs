@@ -14,7 +14,3 @@ license = "MIT"
 r2d2 = "0.8"
 redis = "0.8"
 dns-lookup = "0.9"
-
-[features]
-default = []
-hashset = []

@@ -12,6 +12,3 @@ mod derive_test;
 
 #[cfg(test)]
 mod concurrency_test;
-
-#[cfg(test)]
-mod hashset_test;
