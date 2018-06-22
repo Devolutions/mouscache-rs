@@ -104,6 +104,116 @@ impl Cache {
     }
 }
 
+impl CacheFunc for Cache {
+    fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn hash_exists(&self, key: &str, field: &str) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<Option<T>> {
+        unimplemented!()
+    }
+
+    fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>> {
+        self.get::<&str, T>(key)
+    }
+
+    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
+        unimplemented!()
+    }
+
+    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64> {
+        unimplemented!()
+    }
+
+    fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn hash_len(&self, key: &str) -> Result<usize> {
+        unimplemented!()
+    }
+
+    fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>> {
+        unimplemented!()
+    }
+
+    fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)]) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn hash_set_all<T: Cacheable + Clone + 'static>(&self, key: &str, cacheable: T) -> Result<bool> {
+        self.insert(key, cacheable).map(|_| true)
+    }
+
+    fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64> {
+        unimplemented!()
+    }
+
+    fn hash_values(&self, key: &str) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_card(&self, key: &str) -> Result<u64> {
+        unimplemented!()
+    }
+
+    fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64> {
+        unimplemented!()
+    }
+
+    fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64> {
+        unimplemented!()
+    }
+
+    fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_members(&self, key: &str) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        unimplemented!()
+    }
+
+    fn set_union(&self, keys: &[&str]) -> Result<Vec<String>> {
+        unimplemented!()
+    }
+
+    fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64> {
+        unimplemented!()
+    }
+}
+
 unsafe impl Send for Cache {}
 unsafe impl Sync for Cache {}
 

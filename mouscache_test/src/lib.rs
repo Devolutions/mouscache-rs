@@ -12,3 +12,6 @@ mod derive_test;
 
 #[cfg(test)]
 mod concurrency_test;
+
+#[cfg(test)]
+mod redis_like_test;
