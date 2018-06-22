@@ -278,22 +278,22 @@ impl CacheFunc for RedisCache {
         connection.hexists(key, field).map_err(|e| e.into())
     }
 
-    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<T> {
+    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<Option<T>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
         let val: String = connection.hget(key, field)?;
-        return T::from_str(val.as_ref()).map_err(|_| CacheError::Other("An error occured while parsing a redis value".to_string()))
+        return T::from_str(val.as_ref()).map(|t| Some(t)).map_err(|_| CacheError::Other("An error occured while parsing a redis value".to_string()))
     }
 
-    fn hash_get_all<T: Cacheable>(&self, key: &str) -> Result<T> {
+    fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
         let map: HashMap<String, String> = connection.hgetall(key)?;
-        T::from_redis_obj(map)
+        T::from_redis_obj(map).map(|t| Some(t))
     }
 
     fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
@@ -345,7 +345,7 @@ impl CacheFunc for RedisCache {
         connection.hset(key, field, value.to_string()).map_err(|e| e.into())
     }
 
-    fn hash_set_all<T: Cacheable>(&self, key: &str, cacheable: T) -> Result<bool> {
+    fn hash_set_all<T: Cacheable + Clone + 'static>(&self, key: &str, cacheable: T) -> Result<bool> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),

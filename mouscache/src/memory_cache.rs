@@ -44,6 +44,32 @@ impl Inner {
             sets: RwLock::new(HashMap::new()),
         }
     }
+    
+    pub fn ensure_hash_exists(&self, key: &str) -> Result<()> {
+        if let Some(_) = self.hashsets.read().get(key) {
+            return Ok(());
+        } else { 
+            if let None = self.hashsets.write().insert(key.to_string(), RwLock::new(HashMap::new())) {
+                return Err(::CacheError::Other("Unable to insert a new hashmap".to_string()));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn ensure_set_exists(&self, key: &str) -> Result<()> {
+        if let Some(_) = self.sets.read().get(key) {
+            return Ok(());
+        } else {
+            if let None = self.sets.write().insert(key.to_string(), RwLock::new(HashSet::new())) {
+                return Err(::CacheError::Other("Unable to insert a new hashset".to_string()));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_exists(&self, key: &str) -> bool {
+        self.sets.read().get(key).is_some()
+    }
 }
 
 pub struct MemoryCache {
@@ -128,19 +154,36 @@ fn gen_key<K: ToString, O: Cacheable>(key: K) -> String {
 
 impl CacheFunc for MemoryCache {
     fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool> {
-        unimplemented!()
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            for f in fields {
+                hash.write().remove(&f.to_string());
+            }
+        }
+        Ok(true)
     }
 
     fn hash_exists(&self, key: &str, field: &str) -> Result<bool> {
-        unimplemented!()
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            Ok(hash.read().contains_key(field))
+        } else {
+            Ok(false)
+        }
     }
 
-    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<T> {
-        unimplemented!()
+    fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<Option<T>> {
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            if let Some(val) = hash.read().get(field) {
+                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into disired type".to_string()))
+            }
+        }
+        Ok(None)
     }
 
-    fn hash_get_all<T: Cacheable>(&self, key: &str) -> Result<T> {
-        unimplemented!()
+    fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>> {
+        self.get::<&str, T>(key)
     }
 
     fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
@@ -152,31 +195,80 @@ impl CacheFunc for MemoryCache {
     }
 
     fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
-        unimplemented!()
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            let res = hash.read().keys().map(|k| k.clone()).collect();
+            return Ok(res);
+        }
+        Ok(vec!())
     }
 
     fn hash_len(&self, key: &str) -> Result<usize> {
-        unimplemented!()
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            return Ok(hash.read().len());
+        }
+        Ok(0)
     }
 
     fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>> {
-        unimplemented!()
+        let mut vec = Vec::new();
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            let reader = hash.read();
+            for f in fields {
+                vec.push(reader.get(f.clone()).map(|s| s.clone()));
+            }
+        }
+
+        Ok(vec)
     }
 
     fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)]) -> Result<bool> {
-        unimplemented!()
+        self.inner.ensure_hash_exists(key)?;
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            let mut writer = hash.write();
+            for pair in fv_pairs {
+                writer.insert(pair.0.to_string(), pair.1.to_string());
+            }
+            Ok(true)
+        } else {
+            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+        }
     }
 
     fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
-        unimplemented!()
+        self.inner.ensure_hash_exists(key)?;
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            hash.write().insert(field.to_string(), value.to_string());
+            Ok(true)
+        } else {
+            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+        }
     }
 
-    fn hash_set_all<T: Cacheable>(&self, key: &str, cacheable: T) -> Result<bool> {
-        unimplemented!()
+    fn hash_set_all<T: Cacheable + Clone + 'static>(&self, key: &str, cacheable: T) -> Result<bool> {
+        self.insert(key, cacheable).map(|_| true)
     }
 
     fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
-        unimplemented!()
+        self.inner.ensure_hash_exists(key)?;
+        let map = self.inner.hashsets.read();
+        if let Some(hash) = map.get(key) {
+            {
+                if hash.read().contains_key(field) {
+                    return Ok(false);
+                }
+            }
+            {
+                hash.write().insert(field.to_string(), value.to_string());
+                Ok(true)
+            }
+        } else {
+            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+        }
     }
 
     fn hash_str_len(&self, key: &str, field: &str) -> Result<u64> {
@@ -184,54 +276,119 @@ impl CacheFunc for MemoryCache {
     }
 
     fn hash_values(&self, key: &str) -> Result<Vec<String>> {
-        unimplemented!()
+        let map = self.inner.hashsets.read();
+        let vec = if let Some(hash) = map.get(key) {
+            hash.read().values().map(|s| s.clone()).collect()
+        } else {
+            Vec::new()
+        };
+
+        Ok(vec)
     }
 
     fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool> {
-        unimplemented!()
+        self.inner.ensure_set_exists(key)?;
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key) {
+            let mut writer = set.write();
+            for m in members {
+                writer.insert(m.to_string());
+            }
+            Ok(true)
+        } else {
+            Err(::CacheError::Other("Unable to retrive set from key".to_string()))
+        }
     }
 
     fn set_card(&self, key: &str) -> Result<u64> {
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key) {
+            return Ok(set.read().len() as u64);
+        }
+        Ok(0)
     }
 
     fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+               set_vec.push(key.clone())
+            }
+        }
         unimplemented!()
     }
 
     fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+                set_vec.push(key.clone())
+            }
+        }
+        self.inner.ensure_set_exists(diff_name)?;
         unimplemented!()
     }
 
     fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+                set_vec.push(key.clone())
+            }
+        }
         unimplemented!()
     }
 
     fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+                set_vec.push(key.clone())
+            }
+        }
+        self.inner.ensure_set_exists(inter_name)?;
         unimplemented!()
     }
 
     fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        self.inner.ensure_set_exists(key)?;
         unimplemented!()
     }
 
     fn set_members(&self, key: &str) -> Result<Vec<String>> {
+        self.inner.ensure_set_exists(key)?;
         unimplemented!()
     }
 
     fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool> {
+        self.inner.ensure_set_exists(key1)?;
+        self.inner.ensure_set_exists(key2)?;
         unimplemented!()
     }
 
     fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
+        self.inner.ensure_set_exists(key)?;
         unimplemented!()
     }
 
     fn set_union(&self, keys: &[&str]) -> Result<Vec<String>> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+                set_vec.push(key.clone())
+            }
+        }
         unimplemented!()
     }
 
     fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64> {
+        let mut set_vec = Vec::new();
+        for key in keys {
+            if self.inner.set_exists(key) {
+                set_vec.push(key.clone())
+            }
+        }
+        self.inner.ensure_set_exists(union_name)?;
         unimplemented!()
     }
 }
