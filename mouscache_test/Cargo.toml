@@ -8,7 +8,6 @@ publish = false
 
 [dependencies.mouscache]
 path = "../mouscache"
-features = ["hashset"]
 
 [dependencies.mouscache_derive]
 path = "../mouscache_derive"

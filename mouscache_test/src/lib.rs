@@ -14,4 +14,4 @@ mod derive_test;
 mod concurrency_test;
 
 #[cfg(test)]
-mod hashset_test;
+mod redis_like_test;
