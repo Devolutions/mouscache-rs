@@ -25,14 +25,12 @@ pub trait Cacheable {
 
 use std::str::FromStr;
 
-trait CacheFunc {
+pub trait CacheFunc {
     // Redis-like HashSet related functions
     fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool>;
     fn hash_exists(&self, key: &str, field: &str) -> Result<bool>;
     fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<Option<T>>;
     fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>>;
-    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64>;
-    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64>;
     fn hash_keys(&self, key: &str) -> Result<Vec<String>>;
     fn hash_len(&self, key: &str) -> Result<usize>;
     fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>>;
@@ -40,7 +38,6 @@ trait CacheFunc {
     fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
     fn hash_set_all<T: Cacheable + Clone + 'static>(&self, key: &str, cacheable: T) -> Result<bool>;
     fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool>;
-    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64>;
     fn hash_values(&self, key: &str) -> Result<Vec<String>>;
     // Redis-like Set related functions
     fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool>;
@@ -106,111 +103,171 @@ impl Cache {
 
 impl CacheFunc for Cache {
     fn hash_delete(&self, key: &str, fields: &[&str]) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_delete(key, fields),
+            Redis(ref r) => r.hash_delete(key, fields),
+        }
     }
 
     fn hash_exists(&self, key: &str, field: &str) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_exists(key, field),
+            Redis(ref r) => r.hash_exists(key, field),
+        }
     }
 
     fn hash_get<T: FromStr>(&self, key: &str, field: &str) -> Result<Option<T>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_get(key, field),
+            Redis(ref r) => r.hash_get(key, field),
+        }
     }
 
     fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>> {
-        self.get::<&str, T>(key)
-    }
-
-    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
-        unimplemented!()
-    }
-
-    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_get_all(key),
+            Redis(ref r) => r.hash_get_all(key),
+        }
     }
 
     fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_keys(key),
+            Redis(ref r) => r.hash_keys(key),
+        }
     }
 
     fn hash_len(&self, key: &str) -> Result<usize> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_len(key),
+            Redis(ref r) => r.hash_len(key),
+        }
     }
 
     fn hash_multiple_get(&self, key: &str, fields: &[&str]) -> Result<Vec<Option<String>>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_multiple_get(key, fields),
+            Redis(ref r) => r.hash_multiple_get(key, fields),
+        }
     }
 
     fn hash_multiple_set<V: ToString>(&self, key: &str, fv_pairs: &[(&str, V)]) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_multiple_set(key, fv_pairs),
+            Redis(ref r) => r.hash_multiple_set(key, fv_pairs),
+        }
     }
 
     fn hash_set<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_set(key, field, value),
+            Redis(ref r) => r.hash_set(key, field, value),
+        }
     }
 
     fn hash_set_all<T: Cacheable + Clone + 'static>(&self, key: &str, cacheable: T) -> Result<bool> {
-        self.insert(key, cacheable).map(|_| true)
+        match *self {
+            Memory(ref m) => m.hash_set_all(key, cacheable),
+            Redis(ref r) => r.hash_set_all(key, cacheable),
+        }
     }
 
     fn hash_set_if_not_exists<V: ToString>(&self, key: &str, field: &str, value: V) -> Result<bool> {
-        unimplemented!()
-    }
-
-    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_set_if_not_exists(key, field, value),
+            Redis(ref r) => r.hash_set_if_not_exists(key, field, value),
+        }
     }
 
     fn hash_values(&self, key: &str) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.hash_values(key),
+            Redis(ref r) => r.hash_values(key),
+        }
     }
 
     fn set_add<V: ToString>(&self, key: &str, members: &[V]) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_add(key, members),
+            Redis(ref r) => r.set_add(key, members),
+        }
     }
 
     fn set_card(&self, key: &str) -> Result<u64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_card(key),
+            Redis(ref r) => r.set_card(key),
+        }
     }
 
     fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_diff(keys),
+            Redis(ref r) => r.set_diff(keys),
+        }
     }
 
     fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_diffstore(diff_name, keys),
+            Redis(ref r) => r.set_diffstore(diff_name, keys),
+        }
     }
 
     fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_inter(keys),
+            Redis(ref r) => r.set_inter(keys),
+        }
     }
 
     fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_interstore(inter_name, keys),
+            Redis(ref r) => r.set_interstore(inter_name, keys),
+        }
     }
 
     fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_ismember(key, member),
+            Redis(ref r) => r.set_ismember(key, member),
+        }
     }
 
     fn set_members(&self, key: &str) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_members(key),
+            Redis(ref r) => r.set_members(key),
+        }
     }
 
     fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_move(key1, key2, member),
+            Redis(ref r) => r.set_move(key1, key2, member),
+        }
     }
 
     fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_rem(key, member),
+            Redis(ref r) => r.set_rem(key, member),
+        }
     }
 
     fn set_union(&self, keys: &[&str]) -> Result<Vec<String>> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_union(keys),
+            Redis(ref r) => r.set_union(keys),
+        }
     }
 
     fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64> {
-        unimplemented!()
+        match *self {
+            Memory(ref m) => m.set_unionstore(union_name, keys),
+            Redis(ref r) => r.set_unionstore(union_name, keys),
+        }
     }
 }
 

@@ -18,7 +18,7 @@ impl Expiration {
     pub fn new(ttl: usize) -> Self {
         Expiration {
             insertion_time: Instant::now(),
-            ttl: Duration::from_secs(ttl as u64)
+            ttl: Duration::from_secs(ttl as u64),
         }
     }
 
@@ -44,31 +44,37 @@ impl Inner {
             sets: RwLock::new(HashMap::new()),
         }
     }
-    
+
+    fn hash_exists(&self, key: &str) -> bool {
+        self.hashsets.read().get(key).is_some()
+    }
+
     pub fn ensure_hash_exists(&self, key: &str) -> Result<()> {
-        if let Some(_) = self.hashsets.read().get(key) {
+        if self.hash_exists(key) {
             return Ok(());
-        } else { 
-            if let None = self.hashsets.write().insert(key.to_string(), RwLock::new(HashMap::new())) {
+        } else {
+            let mut writer = self.hashsets.write();
+            if let Some(_) = writer.insert(key.to_string(), RwLock::new(HashMap::new())) {
                 return Err(::CacheError::Other("Unable to insert a new hashmap".to_string()));
             }
         }
         Ok(())
     }
 
+    fn set_exists(&self, key: &str) -> bool {
+        self.sets.read().get(key).is_some()
+    }
+
     pub fn ensure_set_exists(&self, key: &str) -> Result<()> {
-        if let Some(_) = self.sets.read().get(key) {
+        if self.set_exists(key) {
             return Ok(());
         } else {
-            if let None = self.sets.write().insert(key.to_string(), RwLock::new(HashSet::new())) {
+            let mut writer = self.sets.write();
+            if let Some(_) = writer.insert(key.to_string(), RwLock::new(HashSet::new())) {
                 return Err(::CacheError::Other("Unable to insert a new hashset".to_string()));
             }
         }
         Ok(())
-    }
-
-    pub fn set_exists(&self, key: &str) -> bool {
-        self.sets.read().get(key).is_some()
     }
 }
 
@@ -96,7 +102,7 @@ impl CacheAccess for MemoryCache {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O) -> Result<()> {
         let tkey = gen_key::<K, O>(key);
 
-        let exp = obj.expires_after().map(|ttl| {Expiration::new(ttl)});
+        let exp = obj.expires_after().map(|ttl| { Expiration::new(ttl) });
 
         self.inner.obj_cache.write().insert(tkey, (Box::new(obj), exp));
         Ok(())
@@ -176,7 +182,7 @@ impl CacheFunc for MemoryCache {
         let map = self.inner.hashsets.read();
         if let Some(hash) = map.get(key) {
             if let Some(val) = hash.read().get(field) {
-                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into disired type".to_string()))
+                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into disired type".to_string()));
             }
         }
         Ok(None)
@@ -184,14 +190,6 @@ impl CacheFunc for MemoryCache {
 
     fn hash_get_all<T: Cacheable + Clone + 'static>(&self, key: &str) -> Result<Option<T>> {
         self.get::<&str, T>(key)
-    }
-
-    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
-        unimplemented!()
-    }
-
-    fn hash_incr_by_float(&self, key: &str, field: &str, fincr: f64) -> Result<f64> {
-        unimplemented!()
     }
 
     fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
@@ -271,10 +269,6 @@ impl CacheFunc for MemoryCache {
         }
     }
 
-    fn hash_str_len(&self, key: &str, field: &str) -> Result<u64> {
-        unimplemented!()
-    }
-
     fn hash_values(&self, key: &str) -> Result<Vec<String>> {
         let map = self.inner.hashsets.read();
         let vec = if let Some(hash) = map.get(key) {
@@ -309,86 +303,167 @@ impl CacheFunc for MemoryCache {
     }
 
     fn set_diff(&self, keys: &[&str]) -> Result<Vec<String>> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-               set_vec.push(key.clone())
-            }
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |diff_set, current_set_lock| {
+                diff_set.difference(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            Ok(res)
+        } else {
+            Ok(vec![])
         }
-        unimplemented!()
     }
 
     fn set_diffstore(&self, diff_name: &str, keys: &[&str]) -> Result<u64> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-                set_vec.push(key.clone())
-            }
-        }
         self.inner.ensure_set_exists(diff_name)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |diff_set, current_set_lock| {
+                diff_set.difference(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            if let Ok(true) = self.set_add(diff_name, &res) {
+                Ok(res.len() as u64)
+            } else {
+                Ok(0)
+            }
+        } else {
+            Ok(0)
+        }
     }
 
     fn set_inter(&self, keys: &[&str]) -> Result<Vec<String>> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-                set_vec.push(key.clone())
-            }
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |inter_set, current_set_lock| {
+                inter_set.intersection(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            Ok(res)
+        } else {
+            Ok(vec![])
         }
-        unimplemented!()
     }
 
     fn set_interstore(&self, inter_name: &str, keys: &[&str]) -> Result<u64> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-                set_vec.push(key.clone())
-            }
-        }
         self.inner.ensure_set_exists(inter_name)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |inter_set, current_set_lock| {
+                inter_set.intersection(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            if let Ok(true) = self.set_add(inter_name, &res) {
+                Ok(res.len() as u64)
+            } else {
+                Ok(0)
+            }
+        } else {
+            Ok(0)
+        }
     }
 
     fn set_ismember<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
-        self.inner.ensure_set_exists(key)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key) {
+            Ok(set.read().contains(&member.to_string()))
+        } else {
+            Ok(false)
+        }
     }
 
     fn set_members(&self, key: &str) -> Result<Vec<String>> {
-        self.inner.ensure_set_exists(key)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key) {
+            Ok(set.read().iter().map(|ref_str| ref_str.clone()).collect::<Vec<String>>())
+        } else {
+            Ok(vec![])
+        }
     }
 
     fn set_move<V: ToString>(&self, key1: &str, key2: &str, member: V) -> Result<bool> {
-        self.inner.ensure_set_exists(key1)?;
-        self.inner.ensure_set_exists(key2)?;
-        unimplemented!()
+        let set_member = member.to_string();
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key1) {
+            let inserted = {
+                if set.read().contains(&set_member) {
+                    sets[key2].write().insert(set_member.clone());
+                    true
+                } else { false }
+            };
+            if inserted {
+                set.write().remove(&set_member);
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
     }
 
     fn set_rem<V: ToString>(&self, key: &str, member: V) -> Result<bool> {
-        self.inner.ensure_set_exists(key)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        if let Some(set) = sets.get(key) {
+            Ok(set.write().remove(&member.to_string()))
+        } else {
+            Ok(false)
+        }
     }
 
     fn set_union(&self, keys: &[&str]) -> Result<Vec<String>> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-                set_vec.push(key.clone())
-            }
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |union_set, current_set_lock| {
+                union_set.union(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            Ok(res)
+        } else {
+            Ok(vec![])
         }
-        unimplemented!()
     }
 
     fn set_unionstore(&self, union_name: &str, keys: &[&str]) -> Result<u64> {
-        let mut set_vec = Vec::new();
-        for key in keys {
-            if self.inner.set_exists(key) {
-                set_vec.push(key.clone())
-            }
-        }
         self.inner.ensure_set_exists(union_name)?;
-        unimplemented!()
+        let sets = self.inner.sets.read();
+        let mut siter = keys.iter().filter_map(|key| {
+            sets.get(key.clone())
+        });
+
+        if let Some(set) = siter.next() {
+            let res = siter.fold(set.read().clone(), |union_set, current_set_lock| {
+                union_set.union(&current_set_lock.read()).map(|sref| sref.clone()).collect()
+            }).iter().map(|sref| sref.clone()).collect::<Vec<_>>();
+
+            if let Ok(true) = self.set_add(union_name, &res) {
+                Ok(res.len() as u64)
+            } else {
+                Ok(0)
+            }
+        } else {
+            Ok(0)
+        }
     }
 }

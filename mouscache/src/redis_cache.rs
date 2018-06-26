@@ -296,18 +296,6 @@ impl CacheFunc for RedisCache {
         T::from_redis_obj(map).map(|t| Some(t))
     }
 
-    fn hash_incr_by(&self, key: &str, field: &str, incr: i64) -> Result<i64> {
-        let connection = match self.connection_pool.get() {
-            Ok(con) => con,
-            Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
-        };
-        connection.hincr(key, field, incr).map_err(|e| e.into())
-    }
-
-    fn hash_incr_by_float(&self, _key: &str, _field: &str, _fincr: f64) -> Result<f64> {
-        unimplemented!()
-    }
-
     fn hash_keys(&self, key: &str) -> Result<Vec<String>> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
@@ -360,10 +348,6 @@ impl CacheFunc for RedisCache {
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
         connection.hset_nx(key, field, value.to_string()).map_err(|e| e.into())
-    }
-
-    fn hash_str_len(&self, _key: &str, _field: &str) -> Result<u64> {
-        unimplemented!()
     }
 
     fn hash_values(&self, key: &str) -> Result<Vec<String>> {
