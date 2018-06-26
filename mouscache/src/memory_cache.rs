@@ -182,7 +182,7 @@ impl CacheFunc for MemoryCache {
         let map = self.inner.hashsets.read();
         if let Some(hash) = map.get(key) {
             if let Some(val) = hash.read().get(field) {
-                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into disired type".to_string()));
+                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into desired type".to_string()));
             }
         }
         Ok(None)
