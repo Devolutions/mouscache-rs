@@ -55,7 +55,7 @@ fn expand_cacheable_impl_block(input: &DeriveInput) -> Result<Tokens, String> {
     })
 }
 
-fn expand_base_function(ident: &Ident, data_attrs: DataAttribute) -> Tokens {
+fn  expand_base_function(ident: &Ident, data_attrs: DataAttribute) -> Tokens {
     let ident = if let Some(name) = data_attrs.rename {
         Ident::new(name.as_str(), ident.span())
     } else {

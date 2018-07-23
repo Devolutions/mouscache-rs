@@ -109,8 +109,8 @@ mod r2d2_test {
         }
 
         fn is_valid(&self, conn: &mut redis::Connection) -> Result<(), Error> {
-            redis::cmd("PING").query(conn).map_err(|_| {
-                Error::Other("Unable to ping redis server".to_string())
+            redis::cmd("PING").query(conn).map_err(|e| {
+                Error::Other(format!("{:?}", e))
             })
         }
 
@@ -163,7 +163,6 @@ impl RedisCache {
 
             let connection_pool = match Pool::builder()
                 .max_size(15)
-                .min_idle(Some(0))
                 .connection_timeout(::std::time::Duration::from_millis(DB_CONNECTION_TIMEOUT_MS as u64))
                 .build(manager) {
                 Ok(cp) => cp,
