@@ -12,6 +12,6 @@ license = "MIT"
 
 [dependencies]
 r2d2 = "0.8"
-redis = "0.8"
+redis = "0.9"
 dns-lookup = "0.9"
 parking_lot = "0.6"
