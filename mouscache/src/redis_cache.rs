@@ -9,6 +9,7 @@ use CacheFunc;
 use redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
+use FromValue;
 
 use r2d2::Pool;
 use std::str::FromStr;
@@ -282,7 +283,13 @@ impl CacheFunc for RedisCache {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
         };
-        let val: String = connection.hget(key, field)?;
+
+        let redis_val: ::redis::Value = connection.hget(key, field)?;
+        if let ::redis::Value::Nil = redis_val {
+            return Ok(None);
+        }
+
+        let val = String::from_redis_value(&redis_val)?;
         return T::from_str(val.as_ref()).map(|t| Some(t)).map_err(|_| CacheError::Other("An error occured while parsing a redis value".to_string()))
     }
 

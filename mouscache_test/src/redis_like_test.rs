@@ -1,4 +1,3 @@
-use std;
 use mouscache::*;
 
 #[test]
@@ -73,4 +72,22 @@ fn test_memory_set_functions() {
 
     assert!(inter.contains(&"4".to_string()));
     assert!(inter.contains(&"5".to_string()));
+}
+
+#[test]
+fn test_redis() {
+    let cache = redis("127.0.0.1:6379", None, None).expect("dahh");
+
+    let res = cache.set_members("this_set_should_not_exists");
+    println!("test 1 {:?}", res);
+
+    let res = cache.hash_get::<String>("this_hashset_does_not_exists", "neither_this_field");
+    println!("test 2 {:?}", res);
+    let res = cache.hash_set("test_1", "field_1", "val");
+    println!("test 3 {:?}", res);
+    let res = cache.hash_get::<String>("test_1", "field_1");
+    println!("test 4 {:?}", res);
+    let res = cache.hash_get::<String>("test_1", "field_2");
+    println!("test 5 {:?}", res);
+
 }

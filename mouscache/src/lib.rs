@@ -3,6 +3,10 @@ extern crate redis;
 extern crate dns_lookup;
 extern crate parking_lot;
 
+pub use redis::Value;
+pub use redis::FromRedisValue as FromValue;
+pub use redis::ToRedisArgs as ToArgs;
+
 mod error;
 mod memory_cache;
 mod redis_cache;
