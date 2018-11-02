@@ -1,5 +1,6 @@
 # mouscache-rs
 [![Mouscache doc badge](https://docs.rs/mouscache/badge.svg)](https://docs.rs/mouscache/)
+[![dependency status](https://deps.rs/repo/github/Devolutions/mouscache-rs/status.svg)](https://deps.rs/repo/github/Devolutions/mouscache-rs)
 
 A small lib to manipulate object with redis or an in-memory cache
 
