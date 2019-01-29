@@ -100,9 +100,14 @@ impl MemoryCache {
 
 impl CacheAccess for MemoryCache {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O) -> Result<()> {
+        let exp = obj.expires_after();
+        self.insert_with(key, obj, exp)
+    }
+
+    fn insert_with<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O, expires_after: Option<usize>) -> Result<()> {
         let tkey = gen_key::<K, O>(key);
 
-        let exp = obj.expires_after().map(|ttl| { Expiration::new(ttl) });
+        let exp = expires_after.map(|ttl| { Expiration::new(ttl) });
 
         self.inner.obj_cache.write().insert(tkey, (Box::new(obj), exp));
         Ok(())

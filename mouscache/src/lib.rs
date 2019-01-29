@@ -61,6 +61,7 @@ pub trait CacheFunc {
 
 trait CacheAccess {
     fn insert<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O) -> Result<()>;
+    fn insert_with<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O, expires_after: Option<usize>) -> Result<()>;
     fn get<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K) -> Result<Option<O>>;
     fn contains_key<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K) -> Result<bool>;
     fn remove<K: ToString, O: Cacheable>(&self, key: K) -> Result<()>;
@@ -87,6 +88,13 @@ impl Cache {
         match *self {
             Memory(ref c) => c.insert(key, obj),
             Redis(ref c) => c.insert(key, obj),
+        }
+    }
+
+    pub fn insert_with<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O, expires_after: Option<usize>) -> Result<()> {
+        match *self {
+            Memory(ref c) => c.insert_with(key, obj, expires_after),
+            Redis(ref c) => c.insert_with(key, obj, expires_after),
         }
     }
 

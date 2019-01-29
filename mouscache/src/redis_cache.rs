@@ -180,7 +180,12 @@ impl RedisCache {
 }
 
 impl CacheAccess for RedisCache {
-    fn insert<K: ToString, O: Cacheable + 'static>(&self, key: K, obj: O) -> Result<()> {
+    fn insert<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O) -> Result<()> {
+        let exp = obj.expires_after();
+        self.insert_with(key, obj, exp)
+    }
+
+    fn insert_with<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O, expires_after: Option<usize>) -> Result<()> {
         let connection = match self.connection_pool.get() {
             Ok(con) => con,
             Err(e) => return Err(CacheError::ConnectionError(e.to_string())),
@@ -188,7 +193,7 @@ impl CacheAccess for RedisCache {
 
         let redis_key = redis_key_create::<K, O>(key);
         let data = obj.to_redis_obj();
-        if let Some(ttl) = obj.expires_after() {
+        if let Some(ttl) = expires_after {
             redis_hash_set_multiple_with_expire(&connection, redis_key, &data, ttl)
         } else {
             redis_hash_set_multiple(&connection, redis_key, &data)
