@@ -1,6 +1,6 @@
 [package]
 name = "mouscache"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["richer <richer.arc@gmail.com>"]
 description = "A crate to store object either in redis or in memory"
 
@@ -12,6 +12,6 @@ license = "MIT"
 
 [dependencies]
 r2d2 = "0.8"
-redis = "0.9"
+redis = "0.10"
 dns-lookup = "0.9"
 parking_lot = "0.6"
