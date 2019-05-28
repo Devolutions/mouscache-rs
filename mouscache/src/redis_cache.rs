@@ -33,8 +33,8 @@ mod r2d2_test {
 
     impl fmt::Display for Error {
         fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            match self.cause() {
-                Some(cause) => write!(fmt, "{}: {}", self.description(), cause),
+            match self.source() {
+                Some(source) => write!(fmt, "{}: {}", self.description(), source),
                 None => write!(fmt, "{}", self.description()),
             }
         }
