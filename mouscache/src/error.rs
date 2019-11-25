@@ -12,7 +12,7 @@ pub enum CacheError {
     Other(String),
 }
 
-use CacheError::*;
+use crate::CacheError::*;
 
 impl std::fmt::Display for CacheError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result<> {

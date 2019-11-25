@@ -1,15 +1,15 @@
 use std::net;
 use std::mem::discriminant;
 use std::collections::hash_map::HashMap;
-use Result;
-use CacheError;
-use Cacheable;
-use CacheAccess;
-use CacheFunc;
-use redis;
+use crate::Result;
+use crate::CacheError;
+use crate::Cacheable;
+use crate::CacheAccess;
+use crate::CacheFunc;
+use crate::redis;
 use redis::Commands;
 use dns_lookup::lookup_host;
-use FromValue;
+use crate::FromValue;
 
 use r2d2::Pool;
 use std::str::FromStr;
@@ -17,7 +17,7 @@ use std::str::FromStr;
 const DB_CONNECTION_TIMEOUT_MS: i64 = 5000;
 
 mod r2d2_test {
-    use redis;
+    use crate::redis;
     use redis::cmd;
     use r2d2;
     use std::error;
@@ -47,7 +47,7 @@ mod r2d2_test {
             }
         }
 
-        fn cause(&self) -> Option<&error::Error> {
+        fn cause(&self) -> Option<&dyn error::Error> {
             match *self {
                 Error::Other(ref _err) => None
             }
@@ -65,7 +65,7 @@ mod r2d2_test {
         pub fn new<T: redis::IntoConnectionInfo>(host: T, password: Option<&str>, db: Option<u16>)
                                                  -> Result<RedisConnectionManager, redis::RedisError> {
             Ok(RedisConnectionManager {
-                connection_info: try!(host.into_connection_info()),
+                connection_info: r#try!(host.into_connection_info()),
                 password: password.map(|s| { s.to_string() }),
                 db,
             })

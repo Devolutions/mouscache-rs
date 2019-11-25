@@ -3,6 +3,7 @@ name = "mouscache_test"
 version = "0.4.1"
 authors = ["richer <richer.arc@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 

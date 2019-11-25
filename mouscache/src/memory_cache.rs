@@ -1,10 +1,10 @@
 use std::time::{Instant, Duration};
 use std::collections::hash_map::HashMap;
 use std::collections::hash_set::HashSet;
-use Result;
-use Cacheable;
-use CacheAccess;
-use CacheFunc;
+use crate::Result;
+use crate::Cacheable;
+use crate::CacheAccess;
+use crate::CacheFunc;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::str::FromStr;
@@ -28,7 +28,7 @@ impl Expiration {
     }
 }
 
-type MemCacheable = (Box<Cacheable>, Option<Expiration>);
+type MemCacheable = (Box<dyn Cacheable>, Option<Expiration>);
 
 struct Inner {
     pub obj_cache: RwLock<HashMap<String, MemCacheable>>,
@@ -55,7 +55,7 @@ impl Inner {
         } else {
             let mut writer = self.hashsets.write();
             if let Some(_) = writer.insert(key.to_string(), RwLock::new(HashMap::new())) {
-                return Err(::CacheError::Other("Unable to insert a new hashmap".to_string()));
+                return Err(crate::CacheError::Other("Unable to insert a new hashmap".to_string()));
             }
         }
         Ok(())
@@ -71,7 +71,7 @@ impl Inner {
         } else {
             let mut writer = self.sets.write();
             if let Some(_) = writer.insert(key.to_string(), RwLock::new(HashSet::new())) {
-                return Err(::CacheError::Other("Unable to insert a new hashset".to_string()));
+                return Err(crate::CacheError::Other("Unable to insert a new hashset".to_string()));
             }
         }
         Ok(())
@@ -187,7 +187,7 @@ impl CacheFunc for MemoryCache {
         let map = self.inner.hashsets.read();
         if let Some(hash) = map.get(key) {
             if let Some(val) = hash.read().get(field) {
-                return T::from_str(val).map(|t| Some(t)).map_err(|_| ::CacheError::Other("Unable to parse value into desired type".to_string()));
+                return T::from_str(val).map(|t| Some(t)).map_err(|_| crate::CacheError::Other("Unable to parse value into desired type".to_string()));
             }
         }
         Ok(None)
@@ -237,7 +237,7 @@ impl CacheFunc for MemoryCache {
             }
             Ok(true)
         } else {
-            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+            Err(crate::CacheError::Other("Unable to retrive hash from key".to_string()))
         }
     }
 
@@ -248,7 +248,7 @@ impl CacheFunc for MemoryCache {
             hash.write().insert(field.to_string(), value.to_string());
             Ok(true)
         } else {
-            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+            Err(crate::CacheError::Other("Unable to retrive hash from key".to_string()))
         }
     }
 
@@ -270,7 +270,7 @@ impl CacheFunc for MemoryCache {
                 Ok(true)
             }
         } else {
-            Err(::CacheError::Other("Unable to retrive hash from key".to_string()))
+            Err(crate::CacheError::Other("Unable to retrive hash from key".to_string()))
         }
     }
 
@@ -295,7 +295,7 @@ impl CacheFunc for MemoryCache {
             }
             Ok(true)
         } else {
-            Err(::CacheError::Other("Unable to retrive set from key".to_string()))
+            Err(crate::CacheError::Other("Unable to retrive set from key".to_string()))
         }
     }
 
