@@ -13,9 +13,9 @@ mod redis_cache;
 
 use std::{any::Any, collections::HashMap};
 
-use memory_cache::MemoryCache;
-use redis_cache::RedisCache;
-pub use error::CacheError;
+use crate::memory_cache::MemoryCache;
+use crate::redis_cache::RedisCache;
+pub use crate::error::CacheError;
 
 pub type Result<T> = std::result::Result<T, CacheError>;
 
@@ -24,7 +24,7 @@ pub trait Cacheable {
     fn to_redis_obj(&self) -> Vec<(String, String)>;
     fn from_redis_obj(obj: HashMap<String, String>) -> Result<Self> where Self: Sized;
     fn expires_after(&self) -> Option<usize>;
-    fn as_any(&self) -> &Any;
+    fn as_any(&self) -> &dyn Any;
 }
 
 use std::str::FromStr;
@@ -81,7 +81,7 @@ impl Clone for Cache {
     }
 }
 
-use Cache::*;
+use crate::Cache::*;
 
 impl Cache {
     pub fn insert<K: ToString, O: Cacheable + Clone + 'static>(&self, key: K, obj: O) -> Result<()> {

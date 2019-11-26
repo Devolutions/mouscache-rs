@@ -4,7 +4,7 @@ use quote::Tokens;
 use proc_macro;
 use proc_macro2::Span;
 
-use attr::*;
+use crate::attr::*;
 
 pub fn impl_cacheable(input: proc_macro::TokenStream) -> Result<Tokens, String> {
     let input: DeriveInput = syn::parse(input).unwrap();

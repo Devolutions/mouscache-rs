@@ -3,6 +3,7 @@ name = "mouscache_derive"
 version = "0.4.0"
 authors = ["Richer Archambault <richer.arc@gmail.com>"]
 description = "A utility crate implement trait to store object either in redis or in memory"
+edition = "2018"
 
 documentation = "https://docs.rs/mouscache_derive"
 homepage = "https://github.com/wayk/mouscache-rs"

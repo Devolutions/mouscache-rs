@@ -3,6 +3,7 @@ name = "mouscache"
 version = "0.5.5"
 authors = ["richer <richer.arc@gmail.com>"]
 description = "A crate to store object either in redis or in memory"
+edition = "2018"
 
 documentation = "https://docs.rs/mouscache"
 homepage = "https://github.com/wayk/mouscache-rs"
