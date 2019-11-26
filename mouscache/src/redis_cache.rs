@@ -86,7 +86,7 @@ mod r2d2_test {
                             match cmd("AUTH").arg(p).query::<bool>(&conn) {
                                 Ok(true) => {}
                                 _ => {
-                                    return Err(Error::Other(format!("Password authentication failed: Bad password ({})", p)));
+                                    return Err(Error::Other("Password authentication failed: Bad password".to_string()));
                                 }
                             }
                         }
