@@ -27,18 +27,7 @@ impl std::fmt::Display for CacheError {
     }
 }
 
-impl std::error::Error for CacheError {
-    fn description(&self) -> &str {
-        match *self {
-            RedisCacheError(ref e) => e.description(),
-            InsertionError(_) => "Insertion error",
-            DeletionError(_) => "Deletion error",
-            AccessError(_) => "Access error",
-            ConnectionError(_) => "Connection error",
-            Other(_) => "Unknown error",
-        }
-    }
-}
+impl std::error::Error for CacheError{}
 
 impl From<RedisError> for CacheError {
     fn from(e: RedisError) -> Self {

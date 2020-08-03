@@ -18,41 +18,35 @@ const DB_CONNECTION_TIMEOUT_MS: i64 = 5000;
 
 mod r2d2_test {
     use crate::redis;
-    use redis::cmd;
+    use redis::{cmd, RedisError};
     use r2d2;
     use std::error;
-    use std::error::Error as _StdError;
     use std::fmt;
 
     /// A unified enum of errors returned by redis::Client
     #[derive(Debug)]
     pub enum Error {
         /// A redis::RedisError
+        RedisCacheError(RedisError),
         Other(String),
     }
 
     impl fmt::Display for Error {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            match self.source() {
-                Some(source) => write!(fmt, "{}: {}", self.description(), source),
-                None => write!(fmt, "{}", self.description()),
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Error::RedisCacheError(e) => write!(f, "Redis cache error: {}", e),
+                Error::Other(desc) => write!(f, "Other: {}", desc),
             }
         }
     }
 
-    impl error::Error for Error {
-        fn description(&self) -> &str {
-            match *self {
-                Error::Other(ref err) => err.as_str()
-            }
-        }
-
-        fn cause(&self) -> Option<&dyn error::Error> {
-            match *self {
-                Error::Other(ref _err) => None
-            }
+    impl From<redis::RedisError> for Error {
+        fn from(e: RedisError) -> Self {
+            Error::RedisCacheError(e)
         }
     }
+
+    impl error::Error for Error {}
 
     #[derive(Debug)]
     pub struct RedisConnectionManager {
@@ -65,7 +59,7 @@ mod r2d2_test {
         pub fn new<T: redis::IntoConnectionInfo>(host: T, password: Option<&str>, db: Option<u16>)
                                                  -> Result<RedisConnectionManager, redis::RedisError> {
             Ok(RedisConnectionManager {
-                connection_info: r#try!(host.into_connection_info()),
+                connection_info: host.into_connection_info()?,
                 password: password.map(|s| { s.to_string() }),
                 db,
             })
@@ -77,42 +71,26 @@ mod r2d2_test {
         type Error = Error;
 
         fn connect(&self) -> Result<redis::Connection, Error> {
-            match redis::Client::open(self.connection_info.clone()) {
-                Ok(client) => {
-                    let conn_res = client.get_connection();
+            let client = redis::Client::open(self.connection_info.clone())?;
+            let conn = client.get_connection()?;
 
-                    if let Ok(conn) = conn_res {
-                        if let Some(ref p) = self.password {
-                            match cmd("AUTH").arg(p).query::<bool>(&conn) {
-                                Ok(true) => {}
-                                _ => {
-                                    return Err(Error::Other("Password authentication failed: Bad password".to_string()));
-                                }
-                            }
-                        }
-
-                        if let Some(db) = self.db {
-                            match cmd("SELECT").arg(db).query::<bool>(&conn) {
-                                Ok(true) => {}
-                                _ => {
-                                    return Err(Error::Other(format!("Redis server refused to switch database: Bad index ({:?})", db)));
-                                }
-                            }
-                        }
-
-                        Ok(conn)
-                    } else {
-                        Err(Error::Other("Unable to connect to redis server".to_string()))
-                    }
+            if let Some(ref p) = self.password {
+                if !cmd("AUTH").arg(p).query::<bool>(&conn)? {
+                    return Err(Error::Other("Redis authentication failed: Bad password".to_string()));
                 }
-                Err(err) => Err(Error::Other(err.to_string()))
             }
+
+            if let Some(db) = self.db {
+                if !cmd("SELECT").arg(db).query::<bool>(&conn)? {
+                    return Err(Error::Other(format!("Redis server refused to switch database: Bad index ({:?})", db)));
+                }
+            }
+
+            Ok(conn)
         }
 
         fn is_valid(&self, conn: &mut redis::Connection) -> Result<(), Error> {
-            redis::cmd("PING").query(conn).map_err(|e| {
-                Error::Other(format!("{:?}", e))
-            })
+            Ok(redis::cmd("PING").query(conn)?)
         }
 
         fn has_broken(&self, _conn: &mut redis::Connection) -> bool {
